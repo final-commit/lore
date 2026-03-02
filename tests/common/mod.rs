@@ -1,17 +1,21 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use forge::attachments::AttachmentEngine;
 use forge::auth::handler::AuthService;
 use forge::cache::PageCache;
+use forge::collections::CollectionEngine;
 use forge::comments::CommentEngine;
 use forge::config::Config;
 use forge::db;
+use forge::doc_meta::DocMetaEngine;
 use forge::git::{GitEngine, GitQueue};
+use forge::rate_limit::RateLimiter;
 use forge::realtime::new_rooms;
 use forge::search::SearchEngine;
 use forge::state::AppState;
 use forge::sync::SyncEngine;
+use forge::templates::TemplateEngine;
 use tempfile::TempDir;
 
 /// A self-contained test context with a temp repo, in-memory DB, and RAM search index.
@@ -37,6 +41,12 @@ impl TestContext {
         let comments = CommentEngine::new(db.clone());
         let sync = SyncEngine::new(db.clone(), repo_path.clone(), queue.clone());
         let rooms = new_rooms();
+        let rate_limiter = RateLimiter::new(20);
+        let collections = CollectionEngine::new(db.clone());
+        let doc_meta = DocMetaEngine::new(db.clone());
+        let templates = TemplateEngine::new(db.clone());
+        let attachments =
+            AttachmentEngine::new(db.clone(), repo_path.clone(), 10 * 1024 * 1024);
 
         let config = Config {
             jwt_secret: "test-secret-32-chars-minimum-len!".to_string(),
@@ -53,6 +63,11 @@ impl TestContext {
             auth: Arc::new(auth),
             sync: Arc::new(sync),
             rooms,
+            rate_limiter,
+            collections: Arc::new(collections),
+            doc_meta: Arc::new(doc_meta),
+            templates: Arc::new(templates),
+            attachments: Arc::new(attachments),
         };
 
         TestContext { _dir: dir, state }

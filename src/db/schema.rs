@@ -74,6 +74,65 @@ CREATE TABLE IF NOT EXISTS webhook_configs (
     events      TEXT NOT NULL DEFAULT 'push',
     created_at  TEXT NOT NULL
 );
+
+-- Collections (folders / workspaces)
+CREATE TABLE IF NOT EXISTS collections (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    slug        TEXT NOT NULL UNIQUE,
+    description TEXT,
+    icon        TEXT,
+    color       TEXT,
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    parent_id   TEXT REFERENCES collections(id) ON DELETE SET NULL,
+    permission  TEXT NOT NULL DEFAULT 'read',
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_collections_parent ON collections(parent_id);
+CREATE INDEX IF NOT EXISTS idx_collections_slug   ON collections(slug);
+
+-- Templates (reusable document skeletons)
+CREATE TABLE IF NOT EXISTS templates (
+    id              TEXT PRIMARY KEY,
+    title           TEXT NOT NULL,
+    content         TEXT NOT NULL DEFAULT '',
+    collection_id   TEXT REFERENCES collections(id) ON DELETE SET NULL,
+    created_by      TEXT NOT NULL REFERENCES users(id),
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
+
+-- Document metadata (draft/publish status, archive, soft-delete)
+CREATE TABLE IF NOT EXISTS document_meta (
+    id              TEXT PRIMARY KEY,
+    doc_path        TEXT NOT NULL UNIQUE,
+    status          TEXT NOT NULL DEFAULT 'draft',
+    published_at    TEXT,
+    created_by      TEXT NOT NULL REFERENCES users(id),
+    template_id     TEXT REFERENCES templates(id) ON DELETE SET NULL,
+    archived_at     TEXT,
+    deleted_at      TEXT,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_doc_meta_path     ON document_meta(doc_path);
+CREATE INDEX IF NOT EXISTS idx_doc_meta_status   ON document_meta(status);
+CREATE INDEX IF NOT EXISTS idx_doc_meta_deleted  ON document_meta(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_doc_meta_archived ON document_meta(archived_at);
+
+-- File attachments (stored in _attachments/ inside the repo dir)
+CREATE TABLE IF NOT EXISTS attachments (
+    id              TEXT PRIMARY KEY,
+    doc_path        TEXT NOT NULL,
+    filename        TEXT NOT NULL,
+    content_type    TEXT NOT NULL,
+    size_bytes      INTEGER NOT NULL,
+    git_path        TEXT NOT NULL,
+    created_by      TEXT NOT NULL REFERENCES users(id),
+    created_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_attachments_doc ON attachments(doc_path);
 "#;
 
 #[cfg(test)]
@@ -115,7 +174,10 @@ mod tests {
                 .collect()
         };
 
-        for expected in &["users", "sessions", "api_tokens", "comments", "sync_state", "webhook_configs"] {
+        for expected in &[
+            "users", "sessions", "api_tokens", "comments", "sync_state",
+            "webhook_configs", "collections", "templates", "document_meta", "attachments",
+        ] {
             assert!(tables.contains(&expected.to_string()), "missing table: {expected}");
         }
     }

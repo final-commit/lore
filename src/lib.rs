@@ -1,9 +1,12 @@
 pub mod api;
+pub mod attachments;
 pub mod auth;
 pub mod cache;
+pub mod collections;
 pub mod comments;
 pub mod config;
 pub mod db;
+pub mod doc_meta;
 pub mod error;
 pub mod git;
 pub mod rate_limit;
@@ -11,3 +14,4 @@ pub mod realtime;
 pub mod search;
 pub mod state;
 pub mod sync;
+pub mod templates;

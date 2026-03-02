@@ -8,17 +8,21 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use forge::api;
+use forge::attachments::AttachmentEngine;
 use forge::auth::handler::AuthService;
 use forge::cache::PageCache;
+use forge::collections::CollectionEngine;
 use forge::comments::CommentEngine;
 use forge::config::Config;
 use forge::db;
+use forge::doc_meta::DocMetaEngine;
 use forge::git::{GitEngine, GitQueue};
 use forge::rate_limit::RateLimiter;
+use forge::realtime::new_rooms;
 use forge::search::SearchEngine;
 use forge::state::AppState;
 use forge::sync::SyncEngine;
-use forge::realtime::new_rooms;
+use forge::templates::TemplateEngine;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -68,6 +72,13 @@ async fn main() -> anyhow::Result<()> {
     // ── Rate limiter (20 req/min per IP on auth endpoints) ─────────────────
     let rate_limiter = RateLimiter::new(20);
 
+    // ── Sprint 1 engines ───────────────────────────────────────────────────
+    let collections = CollectionEngine::new(db.clone());
+    let doc_meta = DocMetaEngine::new(db.clone());
+    let templates = TemplateEngine::new(db.clone());
+    let attachments =
+        AttachmentEngine::new(db.clone(), repo_path.clone(), config.max_upload_bytes);
+
     let state = AppState {
         config: Arc::new(config.clone()),
         db,
@@ -79,6 +90,10 @@ async fn main() -> anyhow::Result<()> {
         sync: Arc::new(sync),
         rooms,
         rate_limiter,
+        collections: Arc::new(collections),
+        doc_meta: Arc::new(doc_meta),
+        templates: Arc::new(templates),
+        attachments: Arc::new(attachments),
     };
 
     // ── P1 #13: CORS — build from configured origins ───────────────────────

@@ -19,8 +19,11 @@ use crate::pins::PinEngine;
 use crate::rate_limit::RateLimiter;
 use crate::reactions::ReactionEngine;
 use crate::realtime::Rooms;
+use crate::import::ImportEngine;
+use crate::preferences::PreferencesEngine;
 use crate::relationships::RelationshipEngine;
 use crate::search::SearchEngine;
+use crate::settings::SettingsEngine;
 use crate::shares::ShareEngine;
 use crate::stars::StarEngine;
 use crate::subscriptions::SubscriptionEngine;
@@ -60,6 +63,10 @@ pub struct AppState {
     pub reactions: Arc<ReactionEngine>,
     pub outbound_webhooks: Arc<OutboundWebhookEngine>,
     pub relationships: Arc<RelationshipEngine>,
+    // Sprint 5+6 engines
+    pub settings: Arc<SettingsEngine>,
+    pub preferences: Arc<PreferencesEngine>,
+    pub import: Arc<ImportEngine>,
 }
 
 impl HasAuthState for AppState {

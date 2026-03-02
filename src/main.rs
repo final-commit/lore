@@ -35,6 +35,10 @@ use forge::subscriptions::SubscriptionEngine;
 use forge::sync::SyncEngine;
 use forge::templates::TemplateEngine;
 use forge::views::ViewEngine;
+use forge::settings::SettingsEngine;
+use forge::preferences::PreferencesEngine;
+use forge::import::ImportEngine;
+use forge::cron;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -107,6 +111,12 @@ async fn main() -> anyhow::Result<()> {
     let outbound_webhooks = OutboundWebhookEngine::new(db.clone());
     let relationships = RelationshipEngine::new(db.clone());
 
+    // ── Sprint 5+6 engines ─────────────────────────────────────────────────
+    let settings = SettingsEngine::new(db.clone());
+    let preferences = PreferencesEngine::new(db.clone());
+    let import_git = git.clone();
+    let import = ImportEngine::new(import_git);
+
     let state = AppState {
         config: Arc::new(config.clone()),
         db,
@@ -135,6 +145,10 @@ async fn main() -> anyhow::Result<()> {
         reactions: Arc::new(reactions),
         outbound_webhooks: Arc::new(outbound_webhooks),
         relationships: Arc::new(relationships),
+        // Sprint 5+6
+        settings: Arc::new(settings),
+        preferences: Arc::new(preferences),
+        import: Arc::new(import),
     };
 
     // ── P1 #13: CORS — build from configured origins ───────────────────────
@@ -157,6 +171,9 @@ async fn main() -> anyhow::Result<()> {
 
     // ── Router ─────────────────────────────────────────────────────────────
     // WebSocket route is now inside api::router (with state) — no extra route needed.
+    // Clone DB handle for cron before moving state into router.
+    let cron_db = state.db.clone();
+
     let app = api::router(state)
         .layer(TraceLayer::new_for_http())
         .layer(cors);
@@ -165,6 +182,9 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!(%addr, "listening");
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
+
+    // Start background cron (cleanup expired sessions, old events, trashed docs)
+    cron::start(cron_db);
 
     // P1 #14: graceful shutdown on SIGINT / SIGTERM.
     axum::serve(listener, app)

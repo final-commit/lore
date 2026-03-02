@@ -63,6 +63,8 @@ anyhow = "1"
 base64 = "0.22"
 regex = "1"
 
+zip = "2"
+
 [dev-dependencies]
 tempfile = "3"
 tokio-test = "0.4"

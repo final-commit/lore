@@ -291,6 +291,29 @@ CREATE TABLE IF NOT EXISTS relationships (
 );
 CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_doc_path);
 CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_doc_path);
+
+CREATE TABLE IF NOT EXISTS team_settings (
+    id              INTEGER PRIMARY KEY CHECK (id = 1),
+    name            TEXT NOT NULL DEFAULT 'Forge',
+    description     TEXT,
+    logo_url        TEXT,
+    allow_signups   INTEGER NOT NULL DEFAULT 1,
+    default_role    TEXT NOT NULL DEFAULT 'editor',
+    sharing_enabled INTEGER NOT NULL DEFAULT 1,
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+INSERT OR IGNORE INTO team_settings (id, name, updated_at) VALUES (1, 'Forge', datetime('now'));
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id             TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    theme               TEXT NOT NULL DEFAULT 'system',
+    language            TEXT NOT NULL DEFAULT 'en',
+    notification_email  INTEGER NOT NULL DEFAULT 1,
+    notification_web    INTEGER NOT NULL DEFAULT 1,
+    keyboard_shortcuts  INTEGER NOT NULL DEFAULT 1,
+    code_block_language TEXT NOT NULL DEFAULT 'auto',
+    updated_at          TEXT NOT NULL
+);
 "#;
 
 #[cfg(test)]

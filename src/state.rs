@@ -11,12 +11,19 @@ use crate::db::DbConn;
 use crate::doc_meta::DocMetaEngine;
 use crate::events::EventEngine;
 use crate::git::GitEngine;
+use crate::groups::GroupEngine;
+use crate::memberships::MembershipEngine;
+use crate::notifications::NotificationEngine;
+use crate::outbound_webhooks::OutboundWebhookEngine;
 use crate::pins::PinEngine;
 use crate::rate_limit::RateLimiter;
+use crate::reactions::ReactionEngine;
 use crate::realtime::Rooms;
+use crate::relationships::RelationshipEngine;
 use crate::search::SearchEngine;
 use crate::shares::ShareEngine;
 use crate::stars::StarEngine;
+use crate::subscriptions::SubscriptionEngine;
 use crate::sync::SyncEngine;
 use crate::templates::TemplateEngine;
 use crate::views::ViewEngine;
@@ -45,6 +52,14 @@ pub struct AppState {
     pub views: Arc<ViewEngine>,
     pub shares: Arc<ShareEngine>,
     pub events: Arc<EventEngine>,
+    // Sprint 3+4 engines
+    pub groups: Arc<GroupEngine>,
+    pub memberships: Arc<MembershipEngine>,
+    pub notifications: Arc<NotificationEngine>,
+    pub subscriptions: Arc<SubscriptionEngine>,
+    pub reactions: Arc<ReactionEngine>,
+    pub outbound_webhooks: Arc<OutboundWebhookEngine>,
+    pub relationships: Arc<RelationshipEngine>,
 }
 
 impl HasAuthState for AppState {

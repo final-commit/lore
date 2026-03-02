@@ -18,13 +18,20 @@ use forge::db;
 use forge::doc_meta::DocMetaEngine;
 use forge::events::EventEngine;
 use forge::git::{GitEngine, GitQueue};
+use forge::groups::GroupEngine;
+use forge::memberships::MembershipEngine;
+use forge::notifications::NotificationEngine;
+use forge::outbound_webhooks::OutboundWebhookEngine;
 use forge::pins::PinEngine;
 use forge::rate_limit::RateLimiter;
+use forge::reactions::ReactionEngine;
 use forge::realtime::new_rooms;
+use forge::relationships::RelationshipEngine;
 use forge::search::SearchEngine;
 use forge::shares::ShareEngine;
 use forge::stars::StarEngine;
 use forge::state::AppState;
+use forge::subscriptions::SubscriptionEngine;
 use forge::sync::SyncEngine;
 use forge::templates::TemplateEngine;
 use forge::views::ViewEngine;
@@ -91,6 +98,15 @@ async fn main() -> anyhow::Result<()> {
     let shares = ShareEngine::new(db.clone());
     let events = EventEngine::new(db.clone());
 
+    // ── Sprint 3+4 engines ─────────────────────────────────────────────────
+    let groups = GroupEngine::new(db.clone());
+    let memberships = MembershipEngine::new(db.clone());
+    let notifications = NotificationEngine::new(db.clone());
+    let subscriptions = SubscriptionEngine::new(db.clone());
+    let reactions = ReactionEngine::new(db.clone());
+    let outbound_webhooks = OutboundWebhookEngine::new(db.clone());
+    let relationships = RelationshipEngine::new(db.clone());
+
     let state = AppState {
         config: Arc::new(config.clone()),
         db,
@@ -111,6 +127,14 @@ async fn main() -> anyhow::Result<()> {
         views: Arc::new(views),
         shares: Arc::new(shares),
         events: Arc::new(events),
+        // Sprint 3+4
+        groups: Arc::new(groups),
+        memberships: Arc::new(memberships),
+        notifications: Arc::new(notifications),
+        subscriptions: Arc::new(subscriptions),
+        reactions: Arc::new(reactions),
+        outbound_webhooks: Arc::new(outbound_webhooks),
+        relationships: Arc::new(relationships),
     };
 
     // ── P1 #13: CORS — build from configured origins ───────────────────────

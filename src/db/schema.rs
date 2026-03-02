@@ -198,6 +198,99 @@ CREATE INDEX IF NOT EXISTS idx_events_actor      ON events(actor_id);
 CREATE INDEX IF NOT EXISTS idx_events_doc        ON events(doc_path);
 CREATE INDEX IF NOT EXISTS idx_events_collection ON events(collection_id);
 CREATE INDEX IF NOT EXISTS idx_events_name       ON events(name);
+
+-- ── Sprint 3: Groups ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS groups (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    description TEXT,
+    created_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS group_users (
+    id          TEXT PRIMARY KEY,
+    group_id    TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at  TEXT NOT NULL,
+    UNIQUE(group_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_group_users_group ON group_users(group_id);
+CREATE INDEX IF NOT EXISTS idx_group_users_user  ON group_users(user_id);
+
+-- Sprint 3: User Memberships (collection-level permissions)
+CREATE TABLE IF NOT EXISTS user_memberships (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    collection_id   TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+    permission      TEXT NOT NULL DEFAULT 'read',
+    created_by      TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at      TEXT NOT NULL,
+    UNIQUE(user_id, collection_id)
+);
+CREATE INDEX IF NOT EXISTS idx_memberships_user       ON user_memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_memberships_collection ON user_memberships(collection_id);
+
+-- Sprint 3: Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event_id    TEXT REFERENCES events(id) ON DELETE SET NULL,
+    type        TEXT NOT NULL,
+    read_at     TEXT,
+    created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read_at);
+
+-- Sprint 3: Subscriptions (follow documents)
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    doc_path    TEXT NOT NULL,
+    event       TEXT NOT NULL DEFAULT 'documents.update',
+    created_at  TEXT NOT NULL,
+    UNIQUE(user_id, doc_path, event)
+);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_doc  ON subscriptions(doc_path);
+
+-- Sprint 3: Reactions (emoji reactions on comments)
+CREATE TABLE IF NOT EXISTS reactions (
+    id          TEXT PRIMARY KEY,
+    comment_id  TEXT NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji       TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    UNIQUE(comment_id, user_id, emoji)
+);
+CREATE INDEX IF NOT EXISTS idx_reactions_comment ON reactions(comment_id);
+
+-- Sprint 4: Outbound webhook subscriptions
+CREATE TABLE IF NOT EXISTS webhook_subscriptions (
+    id          TEXT PRIMARY KEY,
+    url         TEXT NOT NULL,
+    secret      TEXT,
+    events      TEXT NOT NULL DEFAULT '*',
+    enabled     INTEGER NOT NULL DEFAULT 1,
+    created_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+
+-- Sprint 4: Document relationships
+CREATE TABLE IF NOT EXISTS relationships (
+    id              TEXT PRIMARY KEY,
+    source_doc_path TEXT NOT NULL,
+    target_doc_path TEXT NOT NULL,
+    rel_type        TEXT NOT NULL DEFAULT 'related',
+    created_by      TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at      TEXT NOT NULL,
+    UNIQUE(source_doc_path, target_doc_path)
+);
+CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_doc_path);
+CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_doc_path);
 "#;
 
 #[cfg(test)]
@@ -243,6 +336,9 @@ mod tests {
             "users", "sessions", "api_tokens", "comments", "sync_state",
             "webhook_configs", "collections", "templates", "document_meta", "attachments",
             "stars", "pins", "views", "shares", "events",
+            // Sprint 3+4
+            "groups", "group_users", "user_memberships", "notifications",
+            "subscriptions", "reactions", "webhook_subscriptions", "relationships",
         ] {
             assert!(tables.contains(&expected.to_string()), "missing table: {expected}");
         }

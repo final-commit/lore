@@ -5,16 +5,25 @@ pub mod comments;
 pub mod docs;
 pub mod drafts;
 pub mod events;
+pub mod export;
+pub mod groups;
 pub mod health;
+pub mod memberships;
+pub mod notifications;
 pub mod pins;
+pub mod reactions;
+pub mod relationships;
 pub mod search;
 pub mod shares;
 pub mod stars;
+pub mod subscriptions;
 pub mod sync;
 pub mod templates;
 pub mod trash;
 pub mod tree;
+pub mod users;
 pub mod views;
+pub mod webhook_subscriptions;
 pub mod webhooks;
 
 use axum::{
@@ -105,6 +114,46 @@ pub fn router(state: AppState) -> Router {
         .route("/api/shares/{id}", delete(shares::delete_share))
         // ── Sprint 2: Events / audit log ─────────────────────────────────────
         .route("/api/events", get(events::list_events))
+        // ── Sprint 3: Groups ──────────────────────────────────────────────────
+        .route("/api/groups", get(groups::list_groups))
+        .route("/api/groups", post(groups::create_group))
+        .route("/api/groups/{id}", put(groups::update_group))
+        .route("/api/groups/{id}", delete(groups::delete_group))
+        .route("/api/groups/{id}/members", get(groups::list_members))
+        .route("/api/groups/{id}/members", post(groups::add_member))
+        .route("/api/groups/{id}/members/{user_id}", delete(groups::remove_member))
+        // ── Sprint 3: User Memberships ────────────────────────────────────────
+        .route("/api/memberships", get(memberships::list_memberships))
+        .route("/api/memberships", post(memberships::create_membership))
+        .route("/api/memberships/{id}", put(memberships::update_membership))
+        .route("/api/memberships/{id}", delete(memberships::delete_membership))
+        // ── Sprint 3: Notifications ───────────────────────────────────────────
+        .route("/api/notifications", get(notifications::list_notifications))
+        // read-all MUST come before /{id}/read to avoid route conflict
+        .route("/api/notifications/read-all", post(notifications::mark_all_notifications_read))
+        .route("/api/notifications/{id}/read", post(notifications::mark_notification_read))
+        // ── Sprint 3: Subscriptions ───────────────────────────────────────────
+        .route("/api/subscriptions", post(subscriptions::create_subscription))
+        .route("/api/subscriptions", get(subscriptions::list_subscriptions))
+        .route("/api/subscriptions/{id}", delete(subscriptions::delete_subscription))
+        // ── Sprint 3: Reactions ───────────────────────────────────────────────
+        .route("/api/reactions", post(reactions::toggle_reaction))
+        .route("/api/reactions", get(reactions::list_reactions))
+        .route("/api/reactions/{id}", delete(reactions::delete_reaction))
+        // ── Sprint 4: Export ──────────────────────────────────────────────────
+        .route("/api/export/doc", get(export::export_doc))
+        .route("/api/export/collection/{id}", get(export::export_collection))
+        // ── Sprint 4: Outbound Webhook Subscriptions ──────────────────────────
+        .route("/api/webhook-subscriptions", get(webhook_subscriptions::list_webhook_subscriptions))
+        .route("/api/webhook-subscriptions", post(webhook_subscriptions::create_webhook_subscription))
+        .route("/api/webhook-subscriptions/{id}", put(webhook_subscriptions::update_webhook_subscription))
+        .route("/api/webhook-subscriptions/{id}", delete(webhook_subscriptions::delete_webhook_subscription))
+        // ── Sprint 4: User search (mentions autocomplete) ─────────────────────
+        .route("/api/users/search", get(users::search_users))
+        // ── Sprint 4: Document Relationships ──────────────────────────────────
+        .route("/api/relationships", post(relationships::create_relationship))
+        .route("/api/relationships", get(relationships::list_relationships))
+        .route("/api/relationships/{id}", delete(relationships::delete_relationship))
         // WebSocket
         .route("/ws/yjs/{doc_path}", get(yjs_ws_handler))
         .with_state(state)

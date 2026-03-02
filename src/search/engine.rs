@@ -102,15 +102,16 @@ impl SearchEngine {
 
     /// Full-text search.  Returns up to `limit` results ordered by relevance.
     pub async fn query(&self, q: &str, limit: usize) -> Result<Vec<SearchResult>, AppError> {
-        // Reload reader to pick up latest commits.
-        self.reader.reload().map_err(AppError::Search)?;
-        let searcher = self.reader.searcher();
-
         let fields = self.fields.clone();
         let index = self.index.clone();
+        let reader = self.reader.clone();
         let q = q.to_string();
 
         tokio::task::spawn_blocking(move || {
+            // P1 #20: reload inside spawn_blocking — IndexReader::reload may do I/O.
+            reader.reload().map_err(AppError::Search)?;
+            let searcher = reader.searcher();
+
             let query_parser =
                 QueryParser::for_index(&index, vec![fields.title, fields.body]);
             let query = query_parser
@@ -212,12 +213,19 @@ fn make_reader_writer(index: &Index) -> Result<(IndexReader, Arc<Mutex<IndexWrit
     Ok((reader, Arc::new(Mutex::new(writer))))
 }
 
+/// Truncate to at most `max` bytes on a char boundary to avoid UTF-8 panics.
 fn truncate_snippet(s: &str, max: usize) -> String {
     if s.len() <= max {
-        s.to_string()
-    } else {
-        format!("{}…", &s[..max])
+        return s.to_string();
     }
+    // Walk char boundaries to find the largest safe cut point ≤ max.
+    let boundary = s
+        .char_indices()
+        .map(|(i, _)| i)
+        .take_while(|&i| i <= max)
+        .last()
+        .unwrap_or(0);
+    format!("{}…", &s[..boundary])
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

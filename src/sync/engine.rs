@@ -1,5 +1,5 @@
 use chrono::Utc;
-use git2::{AutotagOption, FetchOptions, PushOptions, RemoteCallbacks, Repository};
+use git2::{AutotagOption, FetchOptions, PushOptions, Repository};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 
@@ -66,8 +66,7 @@ impl SyncEngine {
                 },
             )
         })
-        .await
-        .map_err(AppError::Db)?;
+        .await?;
 
         let (remote_url, branch, last_pull_at, last_push_at, last_pull_commit, last_push_commit) =
             row;
@@ -102,8 +101,7 @@ impl SyncEngine {
                 |r| r.get::<_, String>(0),
             )
         })
-        .await
-        .map_err(AppError::Db)?;
+        .await?;
 
         let br = branch.clone();
         let result = self
@@ -176,8 +174,7 @@ impl SyncEngine {
                 )
                 .map(|_| ())
             })
-            .await
-            .map_err(AppError::Db)?;
+            .await?;
         }
 
         Ok(result)
@@ -195,8 +192,7 @@ impl SyncEngine {
                 |r| r.get::<_, String>(0),
             )
         })
-        .await
-        .map_err(AppError::Db)?;
+        .await?;
 
         let br = branch.clone();
         let result = self
@@ -231,8 +227,7 @@ impl SyncEngine {
                 )
                 .map(|_| ())
             })
-            .await
-            .map_err(AppError::Db)?;
+            .await?;
         }
 
         Ok(result)
@@ -246,7 +241,6 @@ impl SyncEngine {
                 .map(|_| ())
         })
         .await
-        .map_err(AppError::Db)
     }
 
     /// Update the branch in the DB.
@@ -257,7 +251,6 @@ impl SyncEngine {
                 .map(|_| ())
         })
         .await
-        .map_err(AppError::Db)
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────

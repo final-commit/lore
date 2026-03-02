@@ -3,6 +3,8 @@ pub mod schema;
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 
+use crate::error::AppError;
+
 pub type DbConn = Arc<Mutex<Connection>>;
 
 /// Open (or create) a SQLite database at the given path and apply migrations.
@@ -27,19 +29,29 @@ pub fn open(path: &str) -> rusqlite::Result<DbConn> {
 }
 
 /// Execute a closure with a locked database connection on a blocking thread.
-/// Returns the closure's result, mapping panics to an Internal error string.
-pub async fn with_conn<F, T>(db: &DbConn, f: F) -> rusqlite::Result<T>
+///
+/// Returns `AppError::Internal` if the mutex is poisoned or the task panics,
+/// `AppError::Db` for SQLite errors from the closure.
+///
+/// # Note on single-connection bottleneck
+/// All operations go through one `Arc<Mutex<Connection>>`. This is safe and
+/// correct, but under concurrent load every request serialises on the DB lock
+/// even for reads. WAL mode supports concurrent readers when a connection pool
+/// (r2d2 / deadpool-sqlite) is used instead. Upgrading is a future improvement.
+pub async fn with_conn<F, T>(db: &DbConn, f: F) -> Result<T, AppError>
 where
     F: FnOnce(&Connection) -> rusqlite::Result<T> + Send + 'static,
     T: Send + 'static,
 {
     let db = db.clone();
-    tokio::task::spawn_blocking(move || {
-        let conn = db.lock().expect("db mutex poisoned");
-        f(&conn)
+    tokio::task::spawn_blocking(move || -> Result<T, AppError> {
+        let conn = db
+            .lock()
+            .map_err(|_| AppError::Internal("db mutex poisoned".into()))?;
+        f(&conn).map_err(AppError::Db)
     })
     .await
-    .expect("blocking task panicked")
+    .map_err(|e| AppError::Internal(format!("blocking task panicked: {e}")))?
 }
 
 #[cfg(test)]

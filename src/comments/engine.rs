@@ -92,7 +92,6 @@ impl CommentEngine {
             })
         })
         .await
-        .map_err(AppError::Db)
     }
 
     /// List all comments for a document, ordered by creation time.
@@ -113,7 +112,6 @@ impl CommentEngine {
             rows.collect()
         })
         .await
-        .map_err(AppError::Db)
     }
 
     /// Get a single comment by ID.
@@ -133,8 +131,10 @@ impl CommentEngine {
         })
         .await
         .map_err(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(format!("comment {id2} not found")),
-            other => AppError::Db(other),
+            AppError::Db(rusqlite::Error::QueryReturnedNoRows) => {
+                AppError::NotFound(format!("comment {id2} not found"))
+            }
+            other => other,
         })
     }
 
@@ -164,8 +164,10 @@ impl CommentEngine {
         })
         .await
         .map_err(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(format!("comment not found")),
-            other => AppError::Db(other),
+            AppError::Db(rusqlite::Error::QueryReturnedNoRows) => {
+                AppError::NotFound("comment not found".into())
+            }
+            other => other,
         })
     }
 
@@ -183,8 +185,10 @@ impl CommentEngine {
         })
         .await
         .map_err(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(format!("comment {id2} not found")),
-            other => AppError::Db(other),
+            AppError::Db(rusqlite::Error::QueryReturnedNoRows) => {
+                AppError::NotFound(format!("comment {id2} not found"))
+            }
+            other => other,
         })
     }
 
@@ -214,8 +218,10 @@ impl CommentEngine {
         })
         .await
         .map_err(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => AppError::NotFound("comment not found".into()),
-            other => AppError::Db(other),
+            AppError::Db(rusqlite::Error::QueryReturnedNoRows) => {
+                AppError::NotFound("comment not found".into())
+            }
+            other => other,
         })
     }
 }

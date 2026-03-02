@@ -1,4 +1,3 @@
-use axum::{extract::State, Json};
 use chrono::Utc;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
@@ -19,7 +18,9 @@ pub struct RegisterRequest {
     pub email: String,
     pub name: String,
     pub password: String,
-    /// Role for first user becomes admin; subsequent default to editor.
+    /// Accepted in the body for forward-compatibility but always ignored —
+    /// non-first users are always registered as "editor" to prevent escalation.
+    #[allow(dead_code)]
     pub role: Option<String>,
 }
 
@@ -81,27 +82,33 @@ impl AuthService {
         if req.email.is_empty() || req.password.is_empty() || req.name.is_empty() {
             return Err(AppError::BadRequest("email, name, and password are required".into()));
         }
+        // Basic email format check
+        if !req.email.contains('@') || req.email.len() < 3 {
+            return Err(AppError::BadRequest("invalid email format".into()));
+        }
         if req.password.len() < 8 {
             return Err(AppError::BadRequest("password must be at least 8 characters".into()));
         }
 
+        // P0 #1: Hash on a blocking thread — Argon2id is CPU-intensive.
+        let pw = req.password.clone();
+        let password_hash = tokio::task::spawn_blocking(move || hash_password(&pw))
+            .await
+            .map_err(|e| AppError::Internal(format!("hash task panicked: {e}")))?
+            ?;
+
         let db = self.db.clone();
-        let password_hash = hash_password(&req.password)?;
         let id = Uuid::now_v7().to_string();
         let now = Utc::now().to_rfc3339();
 
-        // Determine role: first user is admin, rest are editor by default.
+        // Determine role: first user is admin, all subsequent users are always
+        // "editor" — ignore any role field in the request (P0 #6).
         let user_count = with_conn(&db, |conn| {
             conn.query_row("SELECT COUNT(*) FROM users", [], |r| r.get::<_, i64>(0))
         })
-        .await
-        .map_err(AppError::Db)?;
+        .await?;
 
-        let role = if user_count == 0 {
-            "admin".to_string()
-        } else {
-            req.role.unwrap_or_else(|| "editor".to_string())
-        };
+        let role = if user_count == 0 { "admin".to_string() } else { "editor".to_string() };
 
         let uid = id.clone();
         let email = req.email.clone();
@@ -120,12 +127,12 @@ impl AuthService {
         })
         .await
         .map_err(|e| match e {
-            rusqlite::Error::SqliteFailure(err, _)
+            AppError::Db(rusqlite::Error::SqliteFailure(err, _))
                 if err.code == rusqlite::ErrorCode::ConstraintViolation =>
             {
                 AppError::Conflict("email already registered".into())
             }
-            other => AppError::Db(other),
+            other => other,
         })?;
 
         let access_token = encode_access_token(&id, &req.email, &role, &self.jwt_secret)?;
@@ -169,15 +176,23 @@ impl AuthService {
         })
         .await
         .map_err(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => {
+            AppError::Db(rusqlite::Error::QueryReturnedNoRows) => {
                 AppError::Unauthorized("invalid email or password".into())
             }
-            other => AppError::Db(other),
+            other => other,
         })?;
 
         let (id, email, name, password_hash, role, created_at) = row;
 
-        if !verify_password(&req.password, &password_hash)? {
+        // P0 #1: Verify on a blocking thread — Argon2id is CPU-intensive.
+        let pw = req.password.clone();
+        let ph = password_hash.clone();
+        let valid = tokio::task::spawn_blocking(move || verify_password(&pw, &ph))
+            .await
+            .map_err(|e| AppError::Internal(format!("verify task panicked: {e}")))?
+            ?;
+
+        if !valid {
             return Err(AppError::Unauthorized("invalid email or password".into()));
         }
 
@@ -198,23 +213,36 @@ impl AuthService {
             return Err(AppError::Unauthorized("not a refresh token".into()));
         }
 
-        // Verify the token hash is in the sessions table.
+        // P0 #8: Verify the token hash AND check expiry.
         let hash = sha256_hex(&req.refresh_token);
         let db = self.db.clone();
         let uid = claims.sub.clone();
+        let hash_check = hash.clone();
         let session_exists = with_conn(&db, move |conn| {
             conn.query_row(
-                "SELECT COUNT(*) FROM sessions WHERE user_id=?1 AND refresh_token_hash=?2",
-                params![uid, hash],
+                "SELECT COUNT(*) FROM sessions \
+                 WHERE user_id=?1 AND refresh_token_hash=?2 AND expires_at > datetime('now')",
+                params![uid, hash_check],
                 |r| r.get::<_, i64>(0),
             )
         })
-        .await
-        .map_err(AppError::Db)?;
+        .await?;
 
         if session_exists == 0 {
             return Err(AppError::Unauthorized("session revoked or expired".into()));
         }
+
+        // P0 #9: Delete the consumed token (token rotation — no re-use of old tokens).
+        let uid_del = claims.sub.clone();
+        let hash_del = hash.clone();
+        with_conn(&db, move |conn| {
+            conn.execute(
+                "DELETE FROM sessions WHERE user_id=?1 AND refresh_token_hash=?2",
+                params![uid_del, hash_del],
+            )
+            .map(|_| ())
+        })
+        .await?;
 
         // Fetch user info in case role changed.
         let uid = claims.sub.clone();
@@ -233,8 +261,7 @@ impl AuthService {
                 },
             )
         })
-        .await
-        .map_err(AppError::Db)?;
+        .await?;
 
         let access_token =
             encode_access_token(&user.id, &user.email, &user.role, &self.jwt_secret)?;
@@ -269,8 +296,10 @@ impl AuthService {
         })
         .await
         .map_err(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => AppError::NotFound("user not found".into()),
-            other => AppError::Db(other),
+            AppError::Db(rusqlite::Error::QueryReturnedNoRows) => {
+                AppError::NotFound("user not found".into())
+            }
+            other => other,
         })
     }
 
@@ -292,7 +321,6 @@ impl AuthService {
             .map(|_| ())
         })
         .await
-        .map_err(AppError::Db)
     }
 
     pub async fn create_api_token(
@@ -355,6 +383,23 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_register_role_escalation_blocked() {
+        // Even if the client sends role:"admin", second user must be "editor".
+        let svc = service();
+        svc.register(reg("first@example.com")).await.unwrap();
+        let resp = svc
+            .register(RegisterRequest {
+                email: "attacker@example.com".into(),
+                name: "Attacker".into(),
+                password: "password123".into(),
+                role: Some("admin".into()),
+            })
+            .await
+            .unwrap();
+        assert_eq!(resp.user.role, "editor");
+    }
+
+    #[tokio::test]
     async fn test_register_duplicate_email() {
         let svc = service();
         svc.register(reg("dup@example.com")).await.unwrap();
@@ -408,10 +453,17 @@ mod tests {
         let svc = service();
         let reg_resp = svc.register(reg("user@example.com")).await.unwrap();
         let refresh_resp = svc
-            .refresh(RefreshRequest { refresh_token: reg_resp.refresh_token })
+            .refresh(RefreshRequest { refresh_token: reg_resp.refresh_token.clone() })
             .await
             .unwrap();
         assert!(!refresh_resp.access_token.is_empty());
+
+        // Old token must be invalidated (token rotation).
+        let err = svc
+            .refresh(RefreshRequest { refresh_token: reg_resp.refresh_token })
+            .await
+            .unwrap_err();
+        assert!(matches!(err, AppError::Unauthorized(_)));
     }
 
     #[tokio::test]
@@ -430,6 +482,21 @@ mod tests {
                 email: "a@b.com".into(),
                 name: "A".into(),
                 password: "short".into(),
+                role: None,
+            })
+            .await
+            .unwrap_err();
+        assert!(matches!(err, AppError::BadRequest(_)));
+    }
+
+    #[tokio::test]
+    async fn test_invalid_email_rejected() {
+        let svc = service();
+        let err = svc
+            .register(RegisterRequest {
+                email: "notanemail".into(),
+                name: "A".into(),
+                password: "password123".into(),
                 role: None,
             })
             .await

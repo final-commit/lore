@@ -4,6 +4,7 @@ use axum::{
 };
 use serde::Deserialize;
 
+use crate::auth::AuthUser;
 use crate::error::AppError;
 use crate::search::SearchResult;
 use crate::state::AppState;
@@ -17,6 +18,7 @@ pub struct SearchParams {
 /// GET /api/search?q=...&limit=...
 pub async fn search_handler(
     State(state): State<AppState>,
+    _user: AuthUser,
     Query(params): Query<SearchParams>,
 ) -> Result<Json<Vec<SearchResult>>, AppError> {
     if params.q.trim().is_empty() {

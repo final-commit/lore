@@ -82,10 +82,10 @@ pub async fn resolve_token(
     })
     .await
     .map_err(|e| match e {
-        rusqlite::Error::QueryReturnedNoRows => {
+        AppError::Db(rusqlite::Error::QueryReturnedNoRows) => {
             AppError::Unauthorized("token owner not found".into())
         }
-        other => AppError::Db(other),
+        other => other,
     })?;
 
     Ok(AuthUser { id: user.0, email: user.1, role: user.2 })

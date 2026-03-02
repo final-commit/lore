@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::routing::get;
+use axum::http::{header, HeaderValue, Method};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -14,10 +14,11 @@ use forge::comments::CommentEngine;
 use forge::config::Config;
 use forge::db;
 use forge::git::{GitEngine, GitQueue};
-use forge::realtime::{new_rooms, yjs_ws_handler};
+use forge::rate_limit::RateLimiter;
 use forge::search::SearchEngine;
 use forge::state::AppState;
 use forge::sync::SyncEngine;
+use forge::realtime::new_rooms;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -64,6 +65,9 @@ async fn main() -> anyhow::Result<()> {
     // ── Realtime rooms ─────────────────────────────────────────────────────
     let rooms = new_rooms();
 
+    // ── Rate limiter (20 req/min per IP on auth endpoints) ─────────────────
+    let rate_limiter = RateLimiter::new(20);
+
     let state = AppState {
         config: Arc::new(config.clone()),
         db,
@@ -74,20 +78,30 @@ async fn main() -> anyhow::Result<()> {
         auth: Arc::new(auth),
         sync: Arc::new(sync),
         rooms,
+        rate_limiter,
     };
 
-    // ── CORS ───────────────────────────────────────────────────────────────
-    let cors = CorsLayer::permissive();
+    // ── P1 #13: CORS — build from configured origins ───────────────────────
+    let allowed_origins: Vec<HeaderValue> = config
+        .cors_origins
+        .iter()
+        .filter_map(|o| HeaderValue::from_str(o).ok())
+        .collect();
+
+    let cors = CorsLayer::new()
+        .allow_origin(allowed_origins)
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE]);
 
     // ── Router ─────────────────────────────────────────────────────────────
-    let app = api::router(state.clone())
-        .route(
-            "/ws/yjs/:doc_path",
-            get({
-                let st = state.clone();
-                move |ws, path| yjs_ws_handler(ws, path, axum::extract::State(st))
-            }),
-        )
+    // WebSocket route is now inside api::router (with state) — no extra route needed.
+    let app = api::router(state)
         .layer(TraceLayer::new_for_http())
         .layer(cors);
 
@@ -95,7 +109,34 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!(%addr, "listening");
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
 
+    // P1 #14: graceful shutdown on SIGINT / SIGTERM.
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    tracing::info!("server shut down cleanly");
     Ok(())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => { tracing::info!("received Ctrl+C"); },
+        _ = terminate => { tracing::info!("received SIGTERM"); },
+    }
 }

@@ -19,6 +19,8 @@ pub struct Claims {
     pub iat: i64,
     /// Distinguish access vs refresh tokens
     pub kind: TokenKind,
+    /// Unique token ID — ensures two tokens issued in the same second are distinct.
+    pub jti: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -44,6 +46,7 @@ pub fn encode_access_token(
         exp: (now + Duration::hours(1)).timestamp(),
         iat: now.timestamp(),
         kind: TokenKind::Access,
+        jti: Uuid::new_v4().to_string(),
     };
     encode(
         &Header::default(),
@@ -67,6 +70,7 @@ pub fn encode_refresh_token(
         exp: (now + Duration::days(30)).timestamp(),
         iat: now.timestamp(),
         kind: TokenKind::Refresh,
+        jti: Uuid::new_v4().to_string(),
     };
     encode(
         &Header::default(),
@@ -151,13 +155,12 @@ pub async fn create_api_token(
         )?;
         Ok(())
     })
-    .await
-    .map_err(AppError::Db)?;
+    .await?;
 
     Ok((token, raw))
 }
 
-/// Verify an API token.  Returns the token record if valid.
+/// Verify an API token.  Returns the token record if valid and not expired.
 pub async fn verify_api_token(db: &DbConn, raw_token: &str) -> Result<ApiToken, AppError> {
     let hash = sha256_hex(raw_token);
 
@@ -165,7 +168,8 @@ pub async fn verify_api_token(db: &DbConn, raw_token: &str) -> Result<ApiToken, 
         conn.query_row(
             r#"SELECT id, user_id, name, scope, expires_at, created_at
                FROM api_tokens
-               WHERE token_hash = ?1"#,
+               WHERE token_hash = ?1
+                 AND (expires_at IS NULL OR expires_at > datetime('now'))"#,
             params![hash],
             |row| {
                 Ok(ApiToken {
@@ -181,8 +185,10 @@ pub async fn verify_api_token(db: &DbConn, raw_token: &str) -> Result<ApiToken, 
     })
     .await
     .map_err(|e| match e {
-        rusqlite::Error::QueryReturnedNoRows => AppError::Unauthorized("invalid API token".into()),
-        other => AppError::Db(other),
+        AppError::Db(rusqlite::Error::QueryReturnedNoRows) => {
+            AppError::Unauthorized("invalid API token".into())
+        }
+        other => other,
     })
 }
 
@@ -198,8 +204,10 @@ pub async fn revoke_api_token(db: &DbConn, token_id: &str) -> Result<(), AppErro
     })
     .await
     .map_err(|e| match e {
-        rusqlite::Error::QueryReturnedNoRows => AppError::NotFound("api token not found".into()),
-        other => AppError::Db(other),
+        AppError::Db(rusqlite::Error::QueryReturnedNoRows) => {
+            AppError::NotFound("api token not found".into())
+        }
+        other => other,
     })
 }
 

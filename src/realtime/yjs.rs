@@ -8,15 +8,19 @@
 //!   Message type 1 = Awareness (forwarded verbatim to other clients)
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex as StdMutex};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc, Mutex as StdMutex,
+};
 
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        Path, State,
+        Path, Query, State,
     },
     response::IntoResponse,
 };
+use serde::Deserialize;
 use tokio::sync::{broadcast, RwLock};
 use yrs::{
     updates::decoder::Decode,
@@ -24,6 +28,7 @@ use yrs::{
     Doc, ReadTxn, StateVector, Transact, Update,
 };
 
+use crate::auth::middleware::resolve_token;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -35,6 +40,8 @@ pub struct Room {
     doc: Arc<StdMutex<Doc>>,
     /// Broadcast channel for update messages to all connected clients.
     tx: broadcast::Sender<Vec<u8>>,
+    /// Number of currently-connected clients.  Room is removed when it reaches 0.
+    client_count: Arc<AtomicUsize>,
 }
 
 impl Room {
@@ -43,6 +50,7 @@ impl Room {
         Room {
             doc: Arc::new(StdMutex::new(Doc::new())),
             tx,
+            client_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 }
@@ -53,14 +61,37 @@ pub fn new_rooms() -> Rooms {
     Arc::new(RwLock::new(HashMap::new()))
 }
 
+// ── Query params ──────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct WsQuery {
+    /// Bearer token for authentication (JWT or API token).
+    pub token: Option<String>,
+}
+
 // ── WebSocket upgrade ─────────────────────────────────────────────────────────
 
-/// GET /ws/yjs/:doc_path — upgrades to WebSocket.
+/// GET /ws/yjs/:doc_path?token=<jwt_or_api_token> — upgrades to WebSocket.
 pub async fn yjs_ws_handler(
     ws: WebSocketUpgrade,
     Path(doc_path): Path<String>,
     State(state): State<AppState>,
+    Query(query): Query<WsQuery>,
 ) -> impl IntoResponse {
+    // P0 #4: validate auth token before upgrading.
+    let token = match query.token {
+        Some(t) => t,
+        None => {
+            return AppError::Unauthorized("missing token query parameter".into()).into_response()
+        }
+    };
+
+    let jwt_secret = state.config.jwt_secret.clone();
+    let db = state.db.clone();
+    if let Err(e) = resolve_token(&token, &jwt_secret, &db).await {
+        return e.into_response();
+    }
+
     ws.on_upgrade(move |socket| handle_socket(socket, doc_path, state))
 }
 
@@ -74,17 +105,19 @@ async fn handle_socket(mut socket: WebSocket, doc_path: String, state: AppState)
             .clone()
     };
 
+    // P1 #15: track connected clients; clean up room on last disconnect.
+    room.client_count.fetch_add(1, Ordering::Relaxed);
+
     let mut rx = room.tx.subscribe();
 
     // Send sync step 1 to the new client (server's state vector).
-    // All yrs work done in a synchronous block — no await inside.
     let step1_msg: Vec<u8> = {
         let doc = room.doc.lock().expect("doc mutex poisoned");
         let sv_bytes = doc.transact().state_vector().encode_v1();
-        // doc guard dropped at end of block
         encode_sync_step1(&sv_bytes)
     };
     if socket.send(Message::Binary(step1_msg.into())).await.is_err() {
+        cleanup_room(&state.rooms, &doc_path, &room).await;
         return;
     }
 
@@ -106,6 +139,21 @@ async fn handle_socket(mut socket: WebSocket, doc_path: String, state: AppState)
                     break;
                 }
             }
+        }
+    }
+
+    cleanup_room(&state.rooms, &doc_path, &room).await;
+}
+
+/// Decrement client count and remove the room entry if no clients remain.
+async fn cleanup_room(rooms: &Rooms, doc_path: &str, room: &Arc<Room>) {
+    let prev = room.client_count.fetch_sub(1, Ordering::Relaxed);
+    if prev == 1 {
+        // We were the last client — remove the room.
+        let mut map = rooms.write().await;
+        // Re-check count under the write lock to avoid a race.
+        if room.client_count.load(Ordering::Relaxed) == 0 {
+            map.remove(doc_path);
         }
     }
 }
@@ -153,7 +201,6 @@ async fn handle_sync_message(
                     .map_err(|_| AppError::BadRequest("invalid state vector".into()))?;
                 let doc = room.doc.lock().map_err(|_| AppError::Internal("doc mutex poisoned".into()))?;
                 let update = doc.transact().encode_state_as_update_v1(&client_sv);
-                // doc guard dropped here
                 encode_sync_step2(&update)
             };
             socket
@@ -171,7 +218,6 @@ async fn handle_sync_message(
                 let mut txn = doc.transact_mut();
                 txn.apply_update(update)
                     .map_err(|e| AppError::Internal(format!("yjs apply: {e}")))?;
-                // txn and doc dropped here
                 Some(encode_sync_update(&update_bytes))
             };
             if let Some(msg) = broadcast_msg {
@@ -315,6 +361,20 @@ mod tests {
         assert!(map.contains_key("test-doc"));
     }
 
+    #[tokio::test]
+    async fn test_room_cleanup_on_last_disconnect() {
+        let rooms = new_rooms();
+        let room = {
+            let mut map = rooms.write().await;
+            let r = Arc::new(Room::new());
+            map.insert("doc".to_string(), r.clone());
+            r
+        };
+        room.client_count.fetch_add(1, Ordering::Relaxed);
+        cleanup_room(&rooms, "doc", &room).await;
+        assert!(rooms.read().await.get("doc").is_none());
+    }
+
     #[test]
     fn test_yrs_doc_state_vector() {
         let doc = Doc::new();
@@ -325,7 +385,6 @@ mod tests {
     #[test]
     fn test_apply_empty_update() {
         let doc = Doc::new();
-        // Empty update is valid
         let sv = doc.transact().state_vector();
         let update_bytes = doc.transact().encode_state_as_update_v1(&sv);
         let update = Update::decode_v1(&update_bytes).unwrap();

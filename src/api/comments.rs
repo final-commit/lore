@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::auth::AuthUser;
 use crate::comments::{Comment, CreateComment};
@@ -30,9 +30,12 @@ pub struct UpdateCommentRequest {
     pub body: String,
 }
 
+const MAX_COMMENT_BODY: usize = 10_000;
+
 /// GET /api/comments?doc_path=...
 pub async fn list_comments(
     State(state): State<AppState>,
+    _user: AuthUser,
     Query(params): Query<ListParams>,
 ) -> Result<Json<Vec<Comment>>, AppError> {
     let comments = state.comments.list(&params.doc_path).await?;
@@ -45,6 +48,14 @@ pub async fn create_comment(
     user: AuthUser,
     Json(req): Json<CreateCommentRequest>,
 ) -> Result<(StatusCode, Json<Comment>), AppError> {
+    if req.body.is_empty() {
+        return Err(AppError::BadRequest("comment body must not be empty".into()));
+    }
+    if req.body.len() > MAX_COMMENT_BODY {
+        return Err(AppError::BadRequest(
+            format!("comment body must not exceed {MAX_COMMENT_BODY} characters"),
+        ));
+    }
     let comment = state
         .comments
         .create(CreateComment {
@@ -68,6 +79,14 @@ pub async fn update_comment(
     Path(id): Path<String>,
     Json(req): Json<UpdateCommentRequest>,
 ) -> Result<Json<Comment>, AppError> {
+    if req.body.is_empty() {
+        return Err(AppError::BadRequest("comment body must not be empty".into()));
+    }
+    if req.body.len() > MAX_COMMENT_BODY {
+        return Err(AppError::BadRequest(
+            format!("comment body must not exceed {MAX_COMMENT_BODY} characters"),
+        ));
+    }
     let comment = state.comments.get(&id).await?;
     if comment.author_id != user.id && !user.is_admin() {
         return Err(AppError::Forbidden("you can only edit your own comments".into()));

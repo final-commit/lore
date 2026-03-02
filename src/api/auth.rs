@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     Json,
 };
 
@@ -14,11 +14,29 @@ use crate::auth::{
 use crate::error::AppError;
 use crate::state::AppState;
 
+/// Extract the best available client-IP key for rate limiting.
+/// Falls back to "unknown" when behind a proxy that doesn't set headers.
+fn rate_limit_key(headers: &HeaderMap) -> String {
+    headers
+        .get("x-forwarded-for")
+        .or_else(|| headers.get("x-real-ip"))
+        .and_then(|v| v.to_str().ok())
+        // X-Forwarded-For may be a comma-separated list; take only the first entry.
+        .and_then(|v| v.split(',').next())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
 /// POST /api/auth/register
 pub async fn register(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<RegisterRequest>,
 ) -> Result<(StatusCode, Json<AuthResponse>), AppError> {
+    let key = rate_limit_key(&headers);
+    if !state.rate_limiter.check(&format!("register:{key}")).await {
+        return Err(AppError::TooManyRequests("too many registration attempts".into()));
+    }
     let resp = state.auth.register(req).await?;
     Ok((StatusCode::CREATED, Json(resp)))
 }
@@ -26,8 +44,13 @@ pub async fn register(
 /// POST /api/auth/login
 pub async fn login(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, AppError> {
+    let key = rate_limit_key(&headers);
+    if !state.rate_limiter.check(&format!("login:{key}")).await {
+        return Err(AppError::TooManyRequests("too many login attempts".into()));
+    }
     let resp = state.auth.login(req).await?;
     Ok(Json(resp))
 }

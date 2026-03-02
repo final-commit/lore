@@ -23,6 +23,9 @@ pub enum AppError {
     #[error("conflict: {0}")]
     Conflict(String),
 
+    #[error("too many requests: {0}")]
+    TooManyRequests(String),
+
     #[error("internal error: {0}")]
     Internal(String),
 
@@ -44,15 +47,30 @@ impl IntoResponse for AppError {
             AppError::Forbidden(_) => StatusCode::FORBIDDEN,
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
             AppError::Conflict(_) => StatusCode::CONFLICT,
+            AppError::TooManyRequests(_) => StatusCode::TOO_MANY_REQUESTS,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Git(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Db(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Search(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
-        let message = self.to_string();
-        tracing::error!(error = %message, "request error");
-        (status, Json(json!({ "error": message }))).into_response()
+        let full_message = self.to_string();
+
+        // Log every error server-side with full detail.
+        if status.is_server_error() {
+            tracing::error!(error = %full_message, "internal server error");
+        } else {
+            tracing::warn!(error = %full_message, "request error");
+        }
+
+        // For 5xx errors return a generic message to avoid leaking internals.
+        let client_message = if status.is_server_error() {
+            "internal server error".to_string()
+        } else {
+            full_message
+        };
+
+        (status, Json(json!({ "error": client_message }))).into_response()
     }
 }
 

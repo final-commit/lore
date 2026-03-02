@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -8,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::auth::AuthUser;
 use crate::cache::CachedPage;
 use crate::error::{validate_path, AppError};
-use crate::git::engine::{CommitInfo, Document};
+use crate::git::engine::CommitInfo;
 use crate::search::IndexDoc;
 use crate::state::AppState;
 
@@ -40,6 +42,7 @@ pub struct UpdateDocRequest {
 /// GET /api/docs/*path
 pub async fn get_doc(
     State(state): State<AppState>,
+    _user: AuthUser,
     Path(path): Path<String>,
 ) -> Result<Json<DocResponse>, AppError> {
     validate_path(&path)?;
@@ -113,6 +116,7 @@ pub async fn update_doc(
 }
 
 /// POST /api/docs
+/// P2: check-and-write atomically inside a single git queue operation.
 pub async fn create_doc(
     State(state): State<AppState>,
     user: AuthUser,
@@ -123,15 +127,11 @@ pub async fn create_doc(
         return Err(AppError::Forbidden("editor or admin role required".into()));
     }
 
-    // Check it doesn't already exist.
-    if state.git.read_file(&req.path).await.is_ok() {
-        return Err(AppError::Conflict(format!("document already exists: {}", req.path)));
-    }
-
     let message = req.message.unwrap_or_else(|| format!("Create {}", req.path));
+    // Atomic existence check + write in a single queue slot.
     let commit_sha = state
         .git
-        .write_file(&req.path, &req.content, &message, &user.email, &user.email)
+        .create_file(&req.path, &req.content, &message, &user.email, &user.email)
         .await?;
 
     let _ = state
@@ -171,9 +171,10 @@ pub async fn delete_doc(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// GET /api/docs/*path/history
+/// GET /api/docs-history/*path  (renamed from /api/docs/*path/history to fix wildcard ambiguity)
 pub async fn doc_history(
     State(state): State<AppState>,
+    _user: AuthUser,
     Path(path): Path<String>,
 ) -> Result<Json<Vec<CommitInfo>>, AppError> {
     validate_path(&path)?;
@@ -192,9 +193,11 @@ fn extract_title(content: &str) -> String {
         .unwrap_or_else(|| "Untitled".to_string())
 }
 
+// P0 #2: compile the regex once rather than on every call.
+static STRIP_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"[#*_`\[\]()]|https?://\S+").unwrap());
+
 /// Remove Markdown syntax for indexing.
 fn strip_markdown(content: &str) -> String {
-    // Simple stripping: remove heading markers, link syntax, emphasis.
-    let re = regex::Regex::new(r"[#*_`\[\]()]|https?://\S+").unwrap();
-    re.replace_all(content, " ").into_owned()
+    STRIP_RE.replace_all(content, " ").into_owned()
 }

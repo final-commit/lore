@@ -1,12 +1,12 @@
 use axum::{
     body::Bytes,
-    extract::{Request, State},
+    extract::State,
     http::HeaderMap,
     Json,
 };
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::error::AppError;
 use crate::state::AppState;
@@ -59,15 +59,23 @@ pub async fn git_webhook(
     }))
 }
 
-// ── HMAC verification ─────────────────────────────────────────────────────────
+// ── HMAC / token verification ─────────────────────────────────────────────────
 
 fn verify_hmac_sha256(headers: &HeaderMap, body: &[u8], secret: &str) -> Result<(), AppError> {
+    // GitLab sends X-Gitlab-Token as a plain shared secret (not an HMAC digest).
+    // Compare it directly with a constant-time equality check.
+    if let Some(gitlab_token) = headers.get("X-Gitlab-Token").and_then(|v| v.to_str().ok()) {
+        if !constant_time_eq(gitlab_token.as_bytes(), secret.as_bytes()) {
+            return Err(AppError::Unauthorized("invalid GitLab webhook token".into()));
+        }
+        return Ok(());
+    }
+
     // GitHub uses `X-Hub-Signature-256: sha256=<hex>`.
     // Gitea uses `X-Gitea-Signature: <hex>`.
     let sig_header = headers
         .get("X-Hub-Signature-256")
         .or_else(|| headers.get("X-Gitea-Signature"))
-        .or_else(|| headers.get("X-Gitlab-Token"))
         .and_then(|v| v.to_str().ok())
         .ok_or_else(|| AppError::Unauthorized("missing webhook signature header".into()))?;
 

@@ -7,6 +7,7 @@ use crate::comments::CommentEngine;
 use crate::config::Config;
 use crate::db::DbConn;
 use crate::git::GitEngine;
+use crate::rate_limit::RateLimiter;
 use crate::realtime::Rooms;
 use crate::search::SearchEngine;
 use crate::sync::SyncEngine;
@@ -22,6 +23,8 @@ pub struct AppState {
     pub auth: Arc<AuthService>,
     pub sync: Arc<SyncEngine>,
     pub rooms: Rooms,
+    /// Rate limiter for auth endpoints (login / register).
+    pub rate_limiter: RateLimiter,
 }
 
 impl HasAuthState for AppState {

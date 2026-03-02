@@ -6,6 +6,7 @@ pub mod config;
 pub mod db;
 pub mod error;
 pub mod git;
+pub mod rate_limit;
 pub mod realtime;
 pub mod search;
 pub mod state;

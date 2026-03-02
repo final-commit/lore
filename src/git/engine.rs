@@ -148,6 +148,66 @@ impl GitEngine {
 
     // ── Write operations ──────────────────────────────────────────────────
 
+    /// Create a new file atomically: checks existence and writes in a single queue slot.
+    /// Returns `AppError::Conflict` if the file already exists.
+    pub async fn create_file(
+        &self,
+        file_path: &str,
+        content: &str,
+        message: &str,
+        author_name: &str,
+        author_email: &str,
+    ) -> Result<String, AppError> {
+        validate_path(file_path)?;
+        let repo_path = self.repo_path.clone();
+        let file_path = file_path.to_string();
+        let content = content.to_string();
+        let message = message.to_string();
+        let author_name = author_name.to_string();
+        let author_email = author_email.to_string();
+
+        self.queue
+            .run(move || {
+                let repo = Repository::open(&repo_path)?;
+
+                // Check existence atomically within the same queue slot.
+                let parent_commit = repo.head().ok().and_then(|h| h.peel_to_commit().ok());
+                if let Some(ref commit) = parent_commit {
+                    if let Ok(tree) = commit.tree() {
+                        if tree.get_path(Path::new(&file_path)).is_ok() {
+                            return Err(AppError::Conflict(format!(
+                                "document already exists: {file_path}"
+                            )));
+                        }
+                    }
+                }
+
+                let blob_oid = repo.blob(content.as_bytes())?;
+                let base_tree = parent_commit.as_ref().and_then(|c| c.tree().ok());
+                let new_tree_oid = insert_blob_in_tree(
+                    &repo,
+                    base_tree.as_ref(),
+                    &file_path,
+                    blob_oid,
+                    0o100644,
+                )?;
+                let new_tree = repo.find_tree(new_tree_oid)?;
+                let sig = Signature::now(&author_name, &author_email)?;
+                let parents: Vec<&git2::Commit> =
+                    parent_commit.as_ref().map(|c| vec![c]).unwrap_or_default();
+                let oid = repo.commit(
+                    Some("HEAD"),
+                    &sig,
+                    &sig,
+                    &message,
+                    &new_tree,
+                    &parents,
+                )?;
+                Ok(oid.to_string())
+            })
+            .await
+    }
+
     /// Write or update a file and create a git commit.  Returns the new commit SHA.
     pub async fn write_file(
         &self,

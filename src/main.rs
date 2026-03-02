@@ -16,13 +16,18 @@ use forge::comments::CommentEngine;
 use forge::config::Config;
 use forge::db;
 use forge::doc_meta::DocMetaEngine;
+use forge::events::EventEngine;
 use forge::git::{GitEngine, GitQueue};
+use forge::pins::PinEngine;
 use forge::rate_limit::RateLimiter;
 use forge::realtime::new_rooms;
 use forge::search::SearchEngine;
+use forge::shares::ShareEngine;
+use forge::stars::StarEngine;
 use forge::state::AppState;
 use forge::sync::SyncEngine;
 use forge::templates::TemplateEngine;
+use forge::views::ViewEngine;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -79,6 +84,13 @@ async fn main() -> anyhow::Result<()> {
     let attachments =
         AttachmentEngine::new(db.clone(), repo_path.clone(), config.max_upload_bytes);
 
+    // ── Sprint 2 engines ───────────────────────────────────────────────────
+    let stars = StarEngine::new(db.clone());
+    let pins = PinEngine::new(db.clone());
+    let views = ViewEngine::new(db.clone());
+    let shares = ShareEngine::new(db.clone());
+    let events = EventEngine::new(db.clone());
+
     let state = AppState {
         config: Arc::new(config.clone()),
         db,
@@ -94,6 +106,11 @@ async fn main() -> anyhow::Result<()> {
         doc_meta: Arc::new(doc_meta),
         templates: Arc::new(templates),
         attachments: Arc::new(attachments),
+        stars: Arc::new(stars),
+        pins: Arc::new(pins),
+        views: Arc::new(views),
+        shares: Arc::new(shares),
+        events: Arc::new(events),
     };
 
     // ── P1 #13: CORS — build from configured origins ───────────────────────

@@ -133,6 +133,71 @@ CREATE TABLE IF NOT EXISTS attachments (
     created_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_attachments_doc ON attachments(doc_path);
+
+-- Sprint 2: Stars (bookmarks)
+CREATE TABLE IF NOT EXISTS stars (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    doc_path    TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    UNIQUE(user_id, doc_path)
+);
+CREATE INDEX IF NOT EXISTS idx_stars_user ON stars(user_id);
+
+-- Sprint 2: Pins (pin important docs to top of a collection)
+CREATE TABLE IF NOT EXISTS pins (
+    id              TEXT PRIMARY KEY,
+    doc_path        TEXT NOT NULL,
+    collection_id   TEXT REFERENCES collections(id) ON DELETE CASCADE,
+    pinned_by       TEXT NOT NULL REFERENCES users(id),
+    sort_order      INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL,
+    UNIQUE(doc_path, collection_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pins_collection ON pins(collection_id);
+
+-- Sprint 2: Views tracking (per user per doc)
+CREATE TABLE IF NOT EXISTS views (
+    id              TEXT PRIMARY KEY,
+    doc_path        TEXT NOT NULL,
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    count           INTEGER NOT NULL DEFAULT 1,
+    last_viewed_at  TEXT NOT NULL,
+    created_at      TEXT NOT NULL,
+    UNIQUE(doc_path, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_views_doc  ON views(doc_path);
+CREATE INDEX IF NOT EXISTS idx_views_user ON views(user_id);
+
+-- Sprint 2: Document shares (public links)
+CREATE TABLE IF NOT EXISTS shares (
+    id                  TEXT PRIMARY KEY,
+    doc_path            TEXT NOT NULL,
+    shared_by           TEXT NOT NULL REFERENCES users(id),
+    include_child_docs  INTEGER NOT NULL DEFAULT 0,
+    published           INTEGER NOT NULL DEFAULT 1,
+    url_id              TEXT UNIQUE NOT NULL,
+    expires_at          TEXT,
+    created_at          TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_shares_doc    ON shares(doc_path);
+CREATE INDEX IF NOT EXISTS idx_shares_url_id ON shares(url_id);
+
+-- Sprint 2: Events / audit log
+CREATE TABLE IF NOT EXISTS events (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    actor_id        TEXT REFERENCES users(id) ON DELETE SET NULL,
+    doc_path        TEXT,
+    collection_id   TEXT,
+    data            TEXT,
+    ip_address      TEXT,
+    created_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_events_actor      ON events(actor_id);
+CREATE INDEX IF NOT EXISTS idx_events_doc        ON events(doc_path);
+CREATE INDEX IF NOT EXISTS idx_events_collection ON events(collection_id);
+CREATE INDEX IF NOT EXISTS idx_events_name       ON events(name);
 "#;
 
 #[cfg(test)]
@@ -177,6 +242,7 @@ mod tests {
         for expected in &[
             "users", "sessions", "api_tokens", "comments", "sync_state",
             "webhook_configs", "collections", "templates", "document_meta", "attachments",
+            "stars", "pins", "views", "shares", "events",
         ] {
             assert!(tables.contains(&expected.to_string()), "missing table: {expected}");
         }

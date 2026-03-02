@@ -4,12 +4,17 @@ pub mod collections;
 pub mod comments;
 pub mod docs;
 pub mod drafts;
+pub mod events;
 pub mod health;
+pub mod pins;
 pub mod search;
+pub mod shares;
+pub mod stars;
 pub mod sync;
 pub mod templates;
 pub mod trash;
 pub mod tree;
+pub mod views;
 pub mod webhooks;
 
 use axum::{
@@ -79,6 +84,27 @@ pub fn router(state: AppState) -> Router {
         .route("/api/sync/push", post(sync::sync_push))
         // Webhooks
         .route("/api/webhooks/git", post(webhooks::git_webhook))
+        // ── Sprint 2: Stars (bookmarks) ──────────────────────────────────────
+        .route("/api/stars", post(stars::toggle_star))
+        .route("/api/stars", get(stars::list_stars))
+        .route("/api/stars/{id}", delete(stars::delete_star))
+        // ── Sprint 2: Pins ───────────────────────────────────────────────────
+        .route("/api/pins", post(pins::create_pin))
+        .route("/api/pins", get(pins::list_pins))
+        .route("/api/pins/{id}", delete(pins::delete_pin))
+        .route("/api/pins/{id}", put(pins::reorder_pin))
+        // ── Sprint 2: Views tracking ─────────────────────────────────────────
+        .route("/api/views", post(views::record_view))
+        .route("/api/views", get(views::list_views))
+        .route("/api/views/recent", get(views::recent_views))
+        // ── Sprint 2: Document sharing ───────────────────────────────────────
+        // Public view route MUST come before /api/shares/{id} to avoid conflict.
+        .route("/api/shares/view/{url_id}", get(shares::view_share))
+        .route("/api/shares", post(shares::create_share))
+        .route("/api/shares", get(shares::list_shares))
+        .route("/api/shares/{id}", delete(shares::delete_share))
+        // ── Sprint 2: Events / audit log ─────────────────────────────────────
+        .route("/api/events", get(events::list_events))
         // WebSocket
         .route("/ws/yjs/{doc_path}", get(yjs_ws_handler))
         .with_state(state)

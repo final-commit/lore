@@ -9,12 +9,17 @@ use crate::comments::CommentEngine;
 use crate::config::Config;
 use crate::db::DbConn;
 use crate::doc_meta::DocMetaEngine;
+use crate::events::EventEngine;
 use crate::git::GitEngine;
+use crate::pins::PinEngine;
 use crate::rate_limit::RateLimiter;
 use crate::realtime::Rooms;
 use crate::search::SearchEngine;
+use crate::shares::ShareEngine;
+use crate::stars::StarEngine;
 use crate::sync::SyncEngine;
 use crate::templates::TemplateEngine;
+use crate::views::ViewEngine;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -34,6 +39,12 @@ pub struct AppState {
     pub doc_meta: Arc<DocMetaEngine>,
     pub templates: Arc<TemplateEngine>,
     pub attachments: Arc<AttachmentEngine>,
+    // Sprint 2 engines
+    pub stars: Arc<StarEngine>,
+    pub pins: Arc<PinEngine>,
+    pub views: Arc<ViewEngine>,
+    pub shares: Arc<ShareEngine>,
+    pub events: Arc<EventEngine>,
 }
 
 impl HasAuthState for AppState {

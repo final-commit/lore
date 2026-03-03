@@ -3,6 +3,32 @@ use rusqlite::Connection;
 /// Apply all schema migrations in order. Each migration is idempotent.
 pub fn apply_migrations(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(SCHEMA)?;
+    add_user_columns(conn)?;
+    Ok(())
+}
+
+/// Idempotently add new columns to the users table.
+/// SQLite < 3.35 doesn't support ADD COLUMN IF NOT EXISTS, so we check manually.
+fn add_user_columns(conn: &Connection) -> rusqlite::Result<()> {
+    // Read existing columns from PRAGMA table_info.
+    let existing: Vec<String> = {
+        let mut stmt = conn.prepare("PRAGMA table_info(users)")?;
+        let cols = stmt.query_map([], |row| row.get::<_, String>(1))?;
+        cols.collect::<rusqlite::Result<Vec<_>>>()?
+    };
+
+    let alters = [
+        ("avatar_url", "ALTER TABLE users ADD COLUMN avatar_url TEXT"),
+        ("suspended_at", "ALTER TABLE users ADD COLUMN suspended_at TEXT"),
+        ("last_active_at", "ALTER TABLE users ADD COLUMN last_active_at TEXT"),
+        ("invite_token", "ALTER TABLE users ADD COLUMN invite_token TEXT"),
+    ];
+
+    for (col, sql) in &alters {
+        if !existing.contains(&col.to_string()) {
+            conn.execute_batch(sql)?;
+        }
+    }
     Ok(())
 }
 
@@ -348,6 +374,7 @@ CREATE TABLE IF NOT EXISTS export_jobs (
     created_at   TEXT NOT NULL,
     completed_at TEXT
 );
+
 "#;
 
 #[cfg(test)]

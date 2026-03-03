@@ -1,5 +1,4 @@
 //! Background scheduled tasks.
-use std::sync::Arc;
 use tokio::time::{interval, Duration};
 use tracing::info;
 use crate::db::{with_conn, DbConn};
@@ -9,28 +8,28 @@ pub async fn run_all(db: DbConn) -> Result<usize, crate::error::AppError> {
     let db2 = db.clone();
     // 1. Permanently delete docs trashed > 30 days
     let n = with_conn(&db2, |conn| {
-        Ok(conn.execute(
+        conn.execute(
             "DELETE FROM document_meta WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', '-30 days')",
             [],
-        )?)
+        )
     }).await?;
     count += n;
 
     // 2. Clean expired sessions
     let n = with_conn(&db, |conn| {
-        Ok(conn.execute("DELETE FROM sessions WHERE expires_at < datetime('now')", [])?)
+        conn.execute("DELETE FROM sessions WHERE expires_at < datetime('now')", [])
     }).await?;
     count += n;
 
     // 3. Clean expired API tokens
     let n = with_conn(&db, |conn| {
-        Ok(conn.execute("DELETE FROM api_tokens WHERE expires_at IS NOT NULL AND expires_at < datetime('now')", [])?)
+        conn.execute("DELETE FROM api_tokens WHERE expires_at IS NOT NULL AND expires_at < datetime('now')", [])
     }).await?;
     count += n;
 
     // 4. Clean events older than 90 days
     let n = with_conn(&db, |conn| {
-        Ok(conn.execute("DELETE FROM events WHERE created_at < datetime('now', '-90 days')", [])?)
+        conn.execute("DELETE FROM events WHERE created_at < datetime('now', '-90 days')", [])
     }).await?;
     count += n;
 

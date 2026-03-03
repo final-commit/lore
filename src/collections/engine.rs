@@ -154,19 +154,13 @@ impl CollectionEngine {
                 sets.push(format!("name = ?{idx}"));
                 idx += 1;
             }
-            if req.description.is_some() || true {
-                // Always include description so it can be set to NULL.
-                sets.push(format!("description = ?{idx}"));
-                idx += 1;
-            }
-            if req.icon.is_some() || true {
-                sets.push(format!("icon = ?{idx}"));
-                idx += 1;
-            }
-            if req.color.is_some() || true {
-                sets.push(format!("color = ?{idx}"));
-                idx += 1;
-            }
+            // Always include these fields so they can be set to NULL.
+            sets.push(format!("description = ?{idx}"));
+            idx += 1;
+            sets.push(format!("icon = ?{idx}"));
+            idx += 1;
+            sets.push(format!("color = ?{idx}"));
+            idx += 1;
             if req.sort_order.is_some() {
                 sets.push(format!("sort_order = ?{idx}"));
                 idx += 1;

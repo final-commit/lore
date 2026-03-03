@@ -20,6 +20,7 @@ struct OutlineDoc {
     pub title: Option<String>,
     pub text: Option<String>,
     #[serde(rename = "urlId")]
+    #[allow(dead_code)]
     pub url_id: Option<String>,
 }
 

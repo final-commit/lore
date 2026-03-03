@@ -44,6 +44,7 @@ impl Default for Config {
 }
 
 impl Config {
+    #[allow(clippy::result_large_err)]
     pub fn load() -> Result<Self, figment::Error> {
         Figment::new()
             .merge(Serialized::defaults(Config::default()))
@@ -53,6 +54,7 @@ impl Config {
     }
 
     /// Load with extra overrides (useful for testing).
+    #[allow(clippy::result_large_err)]
     pub fn load_with(overrides: impl figment::Provider) -> Result<Self, figment::Error> {
         Figment::new()
             .merge(Serialized::defaults(Config::default()))

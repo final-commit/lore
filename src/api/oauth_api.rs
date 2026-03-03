@@ -1,4 +1,4 @@
-use axum::{extract::{Path, Query, State}, http::{HeaderMap, StatusCode}, Json, response::Redirect};
+use axum::{extract::{Path, Query, State}, Json, response::Redirect};
 use serde::Deserialize;
 use crate::auth::AuthUser;
 use crate::error::AppError;

@@ -4,6 +4,7 @@ pub mod auth;
 pub mod emojis_api;
 pub mod export_jobs_api;
 pub mod oauth_api;
+pub mod revisions;
 pub mod unfurl;
 pub mod collections;
 pub mod comments;
@@ -157,8 +158,21 @@ pub fn router(state: AppState) -> Router {
         .route("/api/webhook-subscriptions", post(webhook_subscriptions::create_webhook_subscription))
         .route("/api/webhook-subscriptions/{id}", put(webhook_subscriptions::update_webhook_subscription))
         .route("/api/webhook-subscriptions/{id}", delete(webhook_subscriptions::delete_webhook_subscription))
-        // User search (mentions autocomplete)
+        // User search (mentions autocomplete — must be before /{id})
         .route("/api/users/search", get(users::search_users))
+        // User management
+        .route("/api/users", get(users::list_users))
+        .route("/api/users/invite", post(users::invite_user))
+        .route("/api/users/{id}", get(users::get_user))
+        .route("/api/users/{id}", put(users::update_user))
+        .route("/api/users/{id}", delete(users::delete_user))
+        .route("/api/users/{id}/role", put(users::update_user_role))
+        .route("/api/users/{id}/suspend", post(users::suspend_user))
+        .route("/api/users/{id}/activate", post(users::activate_user))
+        // Revisions
+        .route("/api/revisions", get(revisions::list_revisions))
+        .route("/api/revisions/{sha}", get(revisions::get_revision_content))
+        .route("/api/revisions/{sha}/restore", post(revisions::restore_revision))
         // Document Relationships
         .route("/api/relationships", post(relationships::create_relationship))
         .route("/api/relationships", get(relationships::list_relationships))

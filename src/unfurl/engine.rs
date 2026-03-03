@@ -20,6 +20,12 @@ pub struct UnfurlEngine {
     cache: Cache<String, UnfurlResult>,
 }
 
+impl Default for UnfurlEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UnfurlEngine {
     pub fn new() -> Self {
         let client = Client::builder()
@@ -62,7 +68,7 @@ fn detect_embed(url: &str) -> Option<UnfurlResult> {
     let yt_id = extract_youtube_id(url)?;
     Some(UnfurlResult {
         url: url.to_string(),
-        title: Some(format!("YouTube Video")),
+        title: Some("YouTube Video".to_string()),
         description: None,
         image: Some(format!("https://img.youtube.com/vi/{yt_id}/hqdefault.jpg")),
         embed_html: Some(format!(
@@ -77,8 +83,6 @@ fn extract_youtube_id(url: &str) -> Option<String> {
         url.split("v=").nth(1).map(|s| s.split('&').next().unwrap_or(s).to_string())
     } else if url.contains("youtu.be/") {
         url.split("youtu.be/").nth(1).map(|s| s.split('?').next().unwrap_or(s).to_string())
-    } else if url.contains("vimeo.com/") {
-        None // handled separately
     } else {
         None
     }

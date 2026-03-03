@@ -8,21 +8,6 @@ use crate::import::ImportResult;
 use crate::state::AppState;
 use crate::auth::middleware::resolve_token;
 
-/// Extract and verify the Bearer token from headers — used in multipart handlers
-/// where `AuthUser` extractor conflicts with `Multipart`.
-async fn require_admin(state: &AppState, headers: &HeaderMap) -> Result<(), AppError> {
-    let token = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or_else(|| AppError::Unauthorized("missing Authorization header".into()))?;
-    let user = resolve_token(token, &state.config.jwt_secret, &state.db).await?;
-    if !user.is_admin() {
-        return Err(AppError::Forbidden("admin only".into()));
-    }
-    Ok(())
-}
-
 pub async fn import_outline(
     State(state): State<AppState>,
     headers: HeaderMap,

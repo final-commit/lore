@@ -357,6 +357,76 @@ impl GitEngine {
             .await
     }
 
+    /// Return the content of a file at a specific commit SHA.
+    pub async fn get_revision_content(
+        &self,
+        file_path: &str,
+        sha: &str,
+    ) -> Result<String, AppError> {
+        validate_path(file_path)?;
+        let repo_path = self.repo_path.clone();
+        let file_path = file_path.to_string();
+        let sha = sha.to_string();
+
+        self.queue
+            .run(move || {
+                let repo = Repository::open(&repo_path)?;
+                let obj = repo
+                    .revparse_single(&sha)
+                    .map_err(|_| AppError::NotFound("revision".into()))?;
+                let commit = obj
+                    .peel_to_commit()
+                    .map_err(|_| AppError::NotFound("revision".into()))?;
+                let tree = commit.tree()?;
+                let entry = tree
+                    .get_path(Path::new(&file_path))
+                    .map_err(|_| AppError::NotFound("revision".into()))?;
+                let blob = repo
+                    .find_blob(entry.id())
+                    .map_err(|_| AppError::NotFound("revision".into()))?;
+                let content = std::str::from_utf8(blob.content())
+                    .map_err(|_| AppError::BadRequest("file is not valid UTF-8".into()))?
+                    .to_string();
+                Ok(content)
+            })
+            .await
+    }
+
+    /// Restore a file to a previous revision by writing its content as a new commit.
+    pub async fn restore_revision(
+        &self,
+        file_path: &str,
+        sha: &str,
+        author_name: &str,
+        author_email: &str,
+    ) -> Result<CommitInfo, AppError> {
+        let content = self.get_revision_content(file_path, sha).await?;
+        let short = &sha[..sha.len().min(8)];
+        let message = format!("Restore to {short}");
+        let commit_sha = self
+            .write_file(file_path, &content, &message, author_name, author_email)
+            .await?;
+
+        // Build CommitInfo for the new commit.
+        let repo_path = self.repo_path.clone();
+        let commit_sha_clone = commit_sha.clone();
+        self.queue
+            .run(move || {
+                let repo = Repository::open(&repo_path)?;
+                let oid = git2::Oid::from_str(&commit_sha_clone)
+                    .map_err(|_| AppError::Internal("invalid oid".into()))?;
+                let commit = repo.find_commit(oid)?;
+                Ok(CommitInfo {
+                    sha: commit.id().to_string(),
+                    message: commit.message().unwrap_or("").trim().to_string(),
+                    author: commit.author().name().unwrap_or("").to_string(),
+                    author_email: commit.author().email().unwrap_or("").to_string(),
+                    timestamp: commit.time().seconds(),
+                })
+            })
+            .await
+    }
+
     /// Get current HEAD SHA, or None for empty repo.
     pub async fn head_sha(&self) -> Result<Option<String>, AppError> {
         let repo_path = self.repo_path.clone();
@@ -622,5 +692,57 @@ mod tests {
             .unwrap();
         let head = engine.head_sha().await.unwrap().unwrap();
         assert_eq!(head, commit_sha);
+    }
+
+    #[tokio::test]
+    async fn test_get_revision_content() {
+        let (_dir, engine) = setup();
+        let sha = engine
+            .write_file("doc.md", "version one", "v1", "A", "a@b.com")
+            .await
+            .unwrap();
+        engine
+            .write_file("doc.md", "version two", "v2", "A", "a@b.com")
+            .await
+            .unwrap();
+
+        let content = engine.get_revision_content("doc.md", &sha).await.unwrap();
+        assert_eq!(content, "version one");
+    }
+
+    #[tokio::test]
+    async fn test_get_revision_content_invalid_sha() {
+        let (_dir, engine) = setup();
+        engine
+            .write_file("doc.md", "content", "init", "A", "a@b.com")
+            .await
+            .unwrap();
+        let err = engine
+            .get_revision_content("doc.md", "0000000000000000000000000000000000000000")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, AppError::NotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_restore_revision() {
+        let (_dir, engine) = setup();
+        let sha = engine
+            .write_file("doc.md", "original content", "v1", "A", "a@b.com")
+            .await
+            .unwrap();
+        engine
+            .write_file("doc.md", "changed content", "v2", "A", "a@b.com")
+            .await
+            .unwrap();
+
+        let info = engine
+            .restore_revision("doc.md", &sha, "A", "a@b.com")
+            .await
+            .unwrap();
+        assert!(info.message.contains("Restore to"));
+
+        let doc = engine.read_file("doc.md").await.unwrap();
+        assert_eq!(doc.content, "original content");
     }
 }

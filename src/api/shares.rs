@@ -13,7 +13,7 @@ use crate::state::AppState;
 
 #[derive(Deserialize)]
 pub struct ListSharesQuery {
-    pub doc_path: String,
+    pub doc_path: Option<String>,
 }
 
 /// POST /api/shares
@@ -39,7 +39,10 @@ pub async fn list_shares(
     if !user.is_editor_or_admin() {
         return Err(AppError::Forbidden("editor or admin required".into()));
     }
-    let shares = state.shares.list_for_doc(&q.doc_path).await?;
+    let shares = match q.doc_path {
+        Some(ref path) => state.shares.list_for_doc(path).await?,
+        None => state.shares.list_all().await?,
+    };
     Ok(Json(shares))
 }
 

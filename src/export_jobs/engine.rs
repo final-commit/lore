@@ -31,6 +31,31 @@ impl ExportJobEngine {
         ExportJobEngine { db, git, export_dir }
     }
 
+    pub async fn list_for_user(&self, user_id: &str) -> Result<Vec<ExportJob>, AppError> {
+        let db = self.db.clone();
+        let user_id = user_id.to_string();
+        with_conn(&db, move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id, user_id, job_type, status, file_path, error, created_at, completed_at
+                 FROM export_jobs WHERE user_id = ?1 ORDER BY created_at DESC LIMIT 50",
+            )?;
+            let rows = stmt.query_map(rusqlite::params![user_id], |row| {
+                Ok(ExportJob {
+                    id: row.get(0)?,
+                    user_id: row.get(1)?,
+                    job_type: row.get(2)?,
+                    status: row.get(3)?,
+                    file_path: row.get(4)?,
+                    error: row.get(5)?,
+                    created_at: row.get(6)?,
+                    completed_at: row.get(7)?,
+                })
+            })?;
+            rows.collect()
+        })
+        .await
+    }
+
     pub async fn create(&self, user_id: &str, job_type: &str, collection_id: Option<&str>) -> Result<ExportJob, AppError> {
         let id = Uuid::now_v7().to_string();
         let now = Utc::now().to_rfc3339();

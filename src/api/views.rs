@@ -17,7 +17,7 @@ pub struct RecordViewReq {
 
 #[derive(Deserialize)]
 pub struct ListViewsQuery {
-    pub doc_path: String,
+    pub doc_path: Option<String>,
 }
 
 /// POST /api/views — record a view (upsert)
@@ -31,17 +31,26 @@ pub async fn record_view(
     Ok((StatusCode::OK, Json(view)))
 }
 
-/// GET /api/views?doc_path= — list viewers for a doc (admin or any authenticated user)
+/// GET /api/views[?doc_path=] - without doc_path returns current user's recent views;
+/// with doc_path + admin privilege: returns all viewers for that doc.
 pub async fn list_views(
     State(state): State<AppState>,
     user: AuthUser,
     Query(q): Query<ListViewsQuery>,
 ) -> Result<Json<Vec<View>>, AppError> {
-    if !user.is_admin() {
-        return Err(AppError::Forbidden("admin required to list doc viewers".into()));
+    match q.doc_path {
+        Some(path) => {
+            if !user.is_admin() {
+                return Err(AppError::Forbidden("admin required to list doc viewers".into()));
+            }
+            let views = state.views.list_for_doc(&path).await?;
+            Ok(Json(views))
+        }
+        None => {
+            let views = state.views.list_recent_for_user(&user.id, 100).await?;
+            Ok(Json(views))
+        }
     }
-    let views = state.views.list_for_doc(&q.doc_path).await?;
-    Ok(Json(views))
 }
 
 /// GET /api/views/recent — current user's recently viewed docs

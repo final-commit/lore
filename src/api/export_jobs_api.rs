@@ -30,3 +30,11 @@ pub async fn download_export_job(State(state): State<AppState>, user: AuthUser, 
         bytes,
     ).into_response())
 }
+
+pub async fn list_export_jobs(
+    State(state): State<AppState>,
+    user: AuthUser,
+) -> Result<axum::Json<Vec<crate::export_jobs::ExportJob>>, crate::error::AppError> {
+    let jobs = state.export_jobs.list_for_user(&user.id).await?;
+    Ok(axum::Json(jobs))
+}

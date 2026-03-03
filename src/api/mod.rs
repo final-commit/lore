@@ -209,7 +209,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/emojis/upload", post(emojis_api::upload_emoji))
         .route("/api/emojis/{id}", delete(emojis_api::delete_emoji))
         // Async export jobs
-        .route("/api/export-jobs", post(export_jobs_api::create_export_job))
+        .route("/api/export-jobs", get(export_jobs_api::list_export_jobs).post(export_jobs_api::create_export_job))
         .route("/api/export-jobs/{id}", get(export_jobs_api::get_export_job))
         .route("/api/export-jobs/{id}/download", get(export_jobs_api::download_export_job))
         // WebSocket

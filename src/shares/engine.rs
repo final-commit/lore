@@ -82,6 +82,30 @@ impl ShareEngine {
     }
 
     /// Delete (revoke) a share.
+    pub async fn list_all(&self) -> Result<Vec<Share>, AppError> {
+        let db = self.db.clone();
+        with_conn(&db, |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id, doc_path, shared_by, include_child_docs, published, url_id, expires_at, created_at
+                 FROM shares ORDER BY created_at DESC LIMIT 200",
+            )?;
+            let rows = stmt.query_map([], |row| {
+                Ok(Share {
+                    id: row.get(0)?,
+                    doc_path: row.get(1)?,
+                    shared_by: row.get(2)?,
+                    include_child_docs: row.get::<_, i64>(3)? != 0,
+                    published: row.get::<_, i64>(4)? != 0,
+                    url_id: row.get(5)?,
+                    expires_at: row.get(6)?,
+                    created_at: row.get(7)?,
+                })
+            })?;
+            rows.collect()
+        })
+        .await
+    }
+
     pub async fn delete(&self, id: &str) -> Result<(), AppError> {
         let db = self.db.clone();
         let id = id.to_string();

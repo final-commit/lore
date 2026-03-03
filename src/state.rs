@@ -19,8 +19,13 @@ use crate::pins::PinEngine;
 use crate::rate_limit::RateLimiter;
 use crate::reactions::ReactionEngine;
 use crate::realtime::Rooms;
+use crate::ai::AiEngine;
+use crate::emojis::EmojiEngine;
+use crate::export_jobs::ExportJobEngine;
 use crate::import::ImportEngine;
+use crate::oauth::OAuthEngine;
 use crate::preferences::PreferencesEngine;
+use crate::unfurl::UnfurlEngine;
 use crate::relationships::RelationshipEngine;
 use crate::search::SearchEngine;
 use crate::settings::SettingsEngine;
@@ -67,6 +72,12 @@ pub struct AppState {
     pub settings: Arc<SettingsEngine>,
     pub preferences: Arc<PreferencesEngine>,
     pub import: Arc<ImportEngine>,
+    // Overnight build engines
+    pub ai: Arc<AiEngine>,
+    pub unfurl: Arc<UnfurlEngine>,
+    pub emojis: Arc<EmojiEngine>,
+    pub export_jobs: Arc<ExportJobEngine>,
+    pub oauth: Arc<OAuthEngine>,
 }
 
 impl HasAuthState for AppState {

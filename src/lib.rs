@@ -1,8 +1,13 @@
+pub mod ai;
 pub mod api;
 pub mod attachments;
 pub mod auth;
 pub mod cache;
 pub mod collections;
+pub mod emojis;
+pub mod export_jobs;
+pub mod oauth;
+pub mod unfurl;
 pub mod comments;
 pub mod config;
 pub mod cron;

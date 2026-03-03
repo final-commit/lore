@@ -64,6 +64,7 @@ base64 = "0.22"
 regex = "1"
 
 zip = "2"
+urlencoding = "2"
 
 [dev-dependencies]
 tempfile = "3"

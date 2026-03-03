@@ -14,6 +14,10 @@ pub struct Config {
     pub jwt_secret: String,
     pub log_level: String,
     pub cors_origins: Vec<String>,
+    pub base_url: String,
+    pub ai_api_key: Option<String>,
+    pub ai_base_url: String,
+    pub ai_model: String,
     pub webhook_secret: Option<String>,
     pub max_upload_bytes: usize,
 }
@@ -31,6 +35,10 @@ impl Default for Config {
             cors_origins: vec!["http://localhost:3001".to_string()],
             webhook_secret: None,
             max_upload_bytes: 10 * 1024 * 1024, // 10 MB
+            base_url: "http://localhost:3000".to_string(),
+            ai_api_key: None,
+            ai_base_url: "https://api.openai.com/v1".to_string(),
+            ai_model: "gpt-4o-mini".to_string(),
         }
     }
 }

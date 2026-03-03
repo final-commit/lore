@@ -1,5 +1,10 @@
+pub mod ai_api;
 pub mod attachments;
 pub mod auth;
+pub mod emojis_api;
+pub mod export_jobs_api;
+pub mod oauth_api;
+pub mod unfurl;
 pub mod collections;
 pub mod comments;
 pub mod cron_api;
@@ -171,6 +176,28 @@ pub fn router(state: AppState) -> Router {
         .route("/api/import/markdown", post(import::import_markdown))
         // Cron (manual trigger)
         .route("/api/cron/run", post(cron_api::run_cron))
+        // OAuth providers
+        .route("/api/auth/providers", get(oauth_api::list_providers))
+        .route("/api/auth/providers/all", get(oauth_api::list_all_providers))
+        .route("/api/auth/providers/{provider}", put(oauth_api::configure_provider))
+        .route("/api/auth/oauth/{provider}", get(oauth_api::oauth_redirect))
+        .route("/api/auth/oauth/{provider}/callback", get(oauth_api::oauth_callback))
+        // URL unfurling
+        .route("/api/unfurl", get(unfurl::unfurl_handler))
+        // AI
+        .route("/api/ai/status", get(ai_api::ai_status))
+        .route("/api/ai/suggest", post(ai_api::suggest))
+        .route("/api/ai/answer", post(ai_api::answer))
+        .route("/api/ai/summarize", post(ai_api::summarize))
+        .route("/api/ai/generate", post(ai_api::generate))
+        // Custom emoji
+        .route("/api/emojis", get(emojis_api::list_emojis))
+        .route("/api/emojis/upload", post(emojis_api::upload_emoji))
+        .route("/api/emojis/{id}", delete(emojis_api::delete_emoji))
+        // Async export jobs
+        .route("/api/export-jobs", post(export_jobs_api::create_export_job))
+        .route("/api/export-jobs/{id}", get(export_jobs_api::get_export_job))
+        .route("/api/export-jobs/{id}/download", get(export_jobs_api::download_export_job))
         // WebSocket
         .route("/ws/yjs/{doc_path}", get(yjs_ws_handler))
         .with_state(state)

@@ -314,6 +314,40 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     code_block_language TEXT NOT NULL DEFAULT 'auto',
     updated_at          TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS oauth_providers (
+    id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+    provider    TEXT UNIQUE NOT NULL,
+    client_id   TEXT,
+    client_secret TEXT,
+    enabled     INTEGER NOT NULL DEFAULT 0,
+    auth_url    TEXT NOT NULL DEFAULT '',
+    token_url   TEXT NOT NULL DEFAULT '',
+    userinfo_url TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+INSERT OR IGNORE INTO oauth_providers (provider, auth_url, token_url, userinfo_url) VALUES
+    ('google', 'https://accounts.google.com/o/oauth2/v2/auth', 'https://oauth2.googleapis.com/token', 'https://www.googleapis.com/oauth2/v3/userinfo');
+
+CREATE TABLE IF NOT EXISTS custom_emojis (
+    id          TEXT PRIMARY KEY,
+    shortcode   TEXT UNIQUE NOT NULL,
+    image_path  TEXT NOT NULL,
+    creator_id  TEXT NOT NULL REFERENCES users(id),
+    created_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS export_jobs (
+    id           TEXT PRIMARY KEY,
+    user_id      TEXT NOT NULL REFERENCES users(id),
+    job_type     TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'pending',
+    file_path    TEXT,
+    error        TEXT,
+    created_at   TEXT NOT NULL,
+    completed_at TEXT
+);
 "#;
 
 #[cfg(test)]

@@ -38,6 +38,11 @@ use forge::views::ViewEngine;
 use forge::settings::SettingsEngine;
 use forge::preferences::PreferencesEngine;
 use forge::import::ImportEngine;
+use forge::ai::AiEngine;
+use forge::unfurl::UnfurlEngine;
+use forge::emojis::EmojiEngine;
+use forge::export_jobs::ExportJobEngine;
+use forge::oauth::OAuthEngine;
 use forge::cron;
 
 #[tokio::main]
@@ -117,6 +122,17 @@ async fn main() -> anyhow::Result<()> {
     let import_git = git.clone();
     let import = ImportEngine::new(import_git);
 
+    // ── Overnight build engines ────────────────────────────────────────────
+    let ai = AiEngine::new(
+        std::env::var("FORGE_AI_API_KEY").ok(),
+        std::env::var("FORGE_AI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".into()),
+        std::env::var("FORGE_AI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".into()),
+    );
+    let unfurl = UnfurlEngine::new();
+    let emojis = EmojiEngine::new(db.clone(), repo_path.join("_emojis"));
+    let export_jobs = ExportJobEngine::new(db.clone(), git.clone(), repo_path.join("_exports"));
+    let oauth = OAuthEngine::new(db.clone());
+
     let state = AppState {
         config: Arc::new(config.clone()),
         db,
@@ -149,6 +165,12 @@ async fn main() -> anyhow::Result<()> {
         settings: Arc::new(settings),
         preferences: Arc::new(preferences),
         import: Arc::new(import),
+        // Overnight build
+        ai: Arc::new(ai),
+        unfurl: Arc::new(unfurl),
+        emojis: Arc::new(emojis),
+        export_jobs: Arc::new(export_jobs),
+        oauth: Arc::new(oauth),
     };
 
     // ── P1 #13: CORS — build from configured origins ───────────────────────

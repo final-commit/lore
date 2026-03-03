@@ -468,3 +468,96 @@ All errors return JSON:
 | 409 | Conflict (e.g., document already exists) |
 | 429 | Rate limited |
 | 500 | Internal server error |
+
+---
+
+## OAuth / SSO
+
+`GET /api/auth/providers` — List enabled OAuth providers (no auth)
+
+`GET /api/auth/providers/all` (admin) — List all configured providers
+
+`PUT /api/auth/providers/{provider}` (admin) — Configure provider
+```json
+{ "client_id": "...", "client_secret": "...", "enabled": true }
+```
+
+`GET /api/auth/oauth/{provider}` — Redirect to OAuth login (e.g. `/api/auth/oauth/google`)
+
+`GET /api/auth/oauth/{provider}/callback` — OAuth callback (handles code exchange, creates/finds user, redirects to `/?token=...`)
+
+Supported providers: `google` (pre-configured endpoints). OIDC-compatible for custom providers.
+
+---
+
+## URL Unfurling
+
+`GET /api/unfurl?url=https://youtube.com/watch?v=...` (auth required)
+
+Returns embed info for supported providers:
+```json
+{
+  "url": "https://youtube.com/watch?v=abc",
+  "title": "YouTube Video",
+  "description": null,
+  "image": "https://img.youtube.com/vi/abc/hqdefault.jpg",
+  "embed_html": "<iframe ...>",
+  "provider": "youtube"
+}
+```
+
+Supported embed providers: YouTube, Vimeo (OG only), GitHub, Figma, Loom, Twitter/X, any OG-tagged page.
+
+Results cached for 1 hour.
+
+---
+
+## AI
+
+Requires `FORGE_AI_API_KEY` environment variable. Works with any OpenAI-compatible API.
+
+`GET /api/ai/status` — Check if AI is configured (no auth)
+
+`POST /api/ai/suggest` — `{ "doc_path": "...", "content": "..." }` → `[{ "suggestion_type": "improvement|grammar|clarity", "text": "...", "original": "..." }]`
+
+`POST /api/ai/answer` — `{ "doc_path": "...", "question": "..." }` → `{ "answer": "..." }`
+
+`POST /api/ai/summarize` — `{ "content": "..." }` → `{ "summary": "..." }`
+
+`POST /api/ai/generate` — `{ "outline": "## Section\n- point 1\n- point 2" }` → `{ "content": "..." }`
+
+Returns `501 Not Implemented` if `FORGE_AI_API_KEY` is not set.
+
+**Config:**
+- `FORGE_AI_API_KEY` — OpenAI API key (or compatible)
+- `FORGE_AI_BASE_URL` — Default: `https://api.openai.com/v1`
+- `FORGE_AI_MODEL` — Default: `gpt-4o-mini`
+
+---
+
+## Custom Emoji
+
+`GET /api/emojis` — List all custom emojis (no auth)
+
+`POST /api/emojis/upload` (admin) — Multipart: `shortcode` (text) + `file` (image/png, image/gif, image/webp)
+
+`DELETE /api/emojis/{id}` (admin) — Delete emoji
+
+Emoji images served at the URL returned in the `image_url` field.
+
+---
+
+## Async Export Jobs
+
+`POST /api/export-jobs` — Start an export
+```json
+{ "job_type": "collection-zip", "collection_id": "optional-collection-id" }
+{ "job_type": "full-backup" }
+```
+
+`GET /api/export-jobs/{id}` — Poll status
+```json
+{ "id": "...", "status": "pending|complete|failed", "created_at": "...", "completed_at": "..." }
+```
+
+`GET /api/export-jobs/{id}/download` — Download completed export (returns zip file)

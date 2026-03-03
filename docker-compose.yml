@@ -1,0 +1,59 @@
+version: '3.9'
+
+# Forge — self-hosted documentation platform
+# Usage: docker compose up -d
+# Docs: https://github.com/yourorg/forge
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: forge-backend
+    restart: unless-stopped
+    ports:
+      - "3334:3334"
+    environment:
+      FORGE_PORT: "3334"
+      FORGE_JWT_SECRET: "${FORGE_JWT_SECRET:?Set FORGE_JWT_SECRET in .env}"
+      FORGE_DB_PATH: "/data/forge.db"
+      FORGE_REPO_PATH: "/data/repo"
+      FORGE_SEARCH_INDEX_PATH: "/data/search_index"
+      FORGE_ATTACHMENT_PATH: "/data/attachments"
+      FORGE_EMOJI_PATH: "/data/emojis"
+      # Optional: AI (OpenAI-compatible)
+      FORGE_AI_API_KEY: "${FORGE_AI_API_KEY:-}"
+      FORGE_AI_BASE_URL: "${FORGE_AI_BASE_URL:-https://api.openai.com/v1}"
+      FORGE_AI_MODEL: "${FORGE_AI_MODEL:-gpt-4o-mini}"
+      # Optional: OAuth (Google)
+      FORGE_OAUTH_GOOGLE_CLIENT_ID: "${FORGE_OAUTH_GOOGLE_CLIENT_ID:-}"
+      FORGE_OAUTH_GOOGLE_CLIENT_SECRET: "${FORGE_OAUTH_GOOGLE_CLIENT_SECRET:-}"
+    volumes:
+      - forge_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3334/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ../forge/packages/web
+      dockerfile: Dockerfile
+      args:
+        FORGE_BACKEND_URL: "http://forge-backend:3334"
+    container_name: forge-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      FORGE_BACKEND_URL: "http://forge-backend:3334"
+      NODE_ENV: "production"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  forge_data:
+    driver: local

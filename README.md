@@ -185,7 +185,7 @@ Memory usage on idle: ~80MB. Under load (10 concurrent editors): ~150MB.
 
 ## Licence
 
-[Business Source License 1.1](LICENSE) — free to self-host, commercial hosting requires a licence. Converts to MIT on 2029-01-01.
+[Business Source License 1.1](LICENSE) — free to self-host, commercial hosting requires a licence. Converts to Apache 2.0 on 2029-01-01.
 
 ---
 

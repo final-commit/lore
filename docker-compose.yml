@@ -1,6 +1,6 @@
 version: '3.9'
 
-# Forge — self-hosted documentation platform
+# Lore — self-hosted documentation platform
 # Usage: docker compose up -d
 # Docs: https://github.com/yourorg/forge
 
@@ -9,27 +9,27 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: forge-backend
+    container_name: lore-backend
     restart: unless-stopped
     ports:
       - "3334:3334"
     environment:
-      FORGE_PORT: "3334"
-      FORGE_JWT_SECRET: "${FORGE_JWT_SECRET:?Set FORGE_JWT_SECRET in .env}"
-      FORGE_DB_PATH: "/data/forge.db"
-      FORGE_REPO_PATH: "/data/repo"
-      FORGE_SEARCH_INDEX_PATH: "/data/search_index"
-      FORGE_ATTACHMENT_PATH: "/data/attachments"
-      FORGE_EMOJI_PATH: "/data/emojis"
+      LORE_PORT: "3334"
+      LORE_JWT_SECRET: "${LORE_JWT_SECRET:?Set LORE_JWT_SECRET in .env}"
+      LORE_DB_PATH: "/data/forge.db"
+      LORE_REPO_PATH: "/data/repo"
+      LORE_SEARCH_INDEX_PATH: "/data/search_index"
+      LORE_ATTACHMENT_PATH: "/data/attachments"
+      LORE_EMOJI_PATH: "/data/emojis"
       # Optional: AI (OpenAI-compatible)
-      FORGE_AI_API_KEY: "${FORGE_AI_API_KEY:-}"
-      FORGE_AI_BASE_URL: "${FORGE_AI_BASE_URL:-https://api.openai.com/v1}"
-      FORGE_AI_MODEL: "${FORGE_AI_MODEL:-gpt-4o-mini}"
+      LORE_AI_API_KEY: "${LORE_AI_API_KEY:-}"
+      LORE_AI_BASE_URL: "${LORE_AI_BASE_URL:-https://api.openai.com/v1}"
+      LORE_AI_MODEL: "${LORE_AI_MODEL:-gpt-4o-mini}"
       # Optional: OAuth (Google)
-      FORGE_OAUTH_GOOGLE_CLIENT_ID: "${FORGE_OAUTH_GOOGLE_CLIENT_ID:-}"
-      FORGE_OAUTH_GOOGLE_CLIENT_SECRET: "${FORGE_OAUTH_GOOGLE_CLIENT_SECRET:-}"
+      LORE_OAUTH_GOOGLE_CLIENT_ID: "${LORE_OAUTH_GOOGLE_CLIENT_ID:-}"
+      LORE_OAUTH_GOOGLE_CLIENT_SECRET: "${LORE_OAUTH_GOOGLE_CLIENT_SECRET:-}"
     volumes:
-      - forge_data:/data
+      - lore_data:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3334/health"]
       interval: 30s
@@ -42,18 +42,18 @@ services:
       context: ../forge/packages/web
       dockerfile: Dockerfile
       args:
-        FORGE_BACKEND_URL: "http://forge-backend:3334"
-    container_name: forge-frontend
+        LORE_BACKEND_URL: "http://lore-backend:3334"
+    container_name: lore-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      FORGE_BACKEND_URL: "http://forge-backend:3334"
+      LORE_BACKEND_URL: "http://lore-backend:3334"
       NODE_ENV: "production"
     depends_on:
       backend:
         condition: service_healthy
 
 volumes:
-  forge_data:
+  lore_data:
     driver: local

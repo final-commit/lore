@@ -195,11 +195,11 @@ impl OutboundWebhookEngine {
                             .expect("HMAC accepts any key length");
                         mac.update(body.as_bytes());
                         let sig = hex::encode(mac.finalize().into_bytes());
-                        req = req.header("X-Forge-Signature", format!("sha256={sig}"));
+                        req = req.header("X-Lore-Signature", format!("sha256={sig}"));
                     }
                 }
 
-                req = req.header("X-Forge-Event", &event_name);
+                req = req.header("X-Lore-Event", &event_name);
 
                 match req.send().await {
                     Ok(resp) => {

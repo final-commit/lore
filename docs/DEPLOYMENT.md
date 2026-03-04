@@ -1,4 +1,4 @@
-# Forge — Deployment Guide
+# Lore — Deployment Guide
 
 ## Docker (Recommended)
 
@@ -9,8 +9,8 @@ docker run -d \
   --name forge \
   -p 3000:3000 \
   -v forge-data:/data \
-  -e FORGE_JWT_SECRET="$(openssl rand -base64 32)" \
-  ghcr.io/your-org/forge:latest
+  -e LORE_JWT_SECRET="$(openssl rand -base64 32)" \
+  ghcr.io/your-org/lore:latest
 ```
 
 First user to register becomes admin.
@@ -20,21 +20,21 @@ First user to register becomes admin.
 ```yaml
 version: '3.8'
 services:
-  forge:
-    image: ghcr.io/your-org/forge:latest
+  lore:
+    image: ghcr.io/your-org/lore:latest
     ports:
       - "3000:3000"
     volumes:
       - forge-data:/data
       - ./my-docs-repo:/data/repo  # optional: mount existing git repo
     environment:
-      FORGE_JWT_SECRET: "change-me-to-a-random-secret"
-      FORGE_PORT: "3000"
-      FORGE_HOST: "0.0.0.0"
-      FORGE_LOG_LEVEL: "info"
+      LORE_JWT_SECRET: "change-me-to-a-random-secret"
+      LORE_PORT: "3000"
+      LORE_HOST: "0.0.0.0"
+      LORE_LOG_LEVEL: "info"
       # Optional: connect to remote git
-      # FORGE_GIT_REMOTE_URL: "https://github.com/yourorg/docs.git"
-      # FORGE_GIT_REMOTE_TOKEN: "ghp_xxxx"
+      # LORE_GIT_REMOTE_URL: "https://github.com/yourorg/docs.git"
+      # LORE_GIT_REMOTE_TOKEN: "ghp_xxxx"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
@@ -52,15 +52,15 @@ All config via environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FORGE_HOST` | `0.0.0.0` | Bind address |
-| `FORGE_PORT` | `3000` | Port |
-| `FORGE_JWT_SECRET` | **required** | Secret for JWT signing (min 32 chars) |
-| `FORGE_REPO_PATH` | `/data/repo` | Path to git repository |
-| `FORGE_DB_PATH` | `/data/forge.db` | SQLite database path |
-| `FORGE_SEARCH_INDEX_PATH` | `/data/search_index` | Tantivy search index |
-| `FORGE_LOG_LEVEL` | `info` | Log level (trace/debug/info/warn/error) |
-| `FORGE_CORS_ORIGINS` | `*` | Comma-separated allowed origins |
-| `FORGE_MAX_UPLOAD_BYTES` | `10485760` | Max attachment upload size (10MB) |
+| `LORE_HOST` | `0.0.0.0` | Bind address |
+| `LORE_PORT` | `3000` | Port |
+| `LORE_JWT_SECRET` | **required** | Secret for JWT signing (min 32 chars) |
+| `LORE_REPO_PATH` | `/data/repo` | Path to git repository |
+| `LORE_DB_PATH` | `/data/forge.db` | SQLite database path |
+| `LORE_SEARCH_INDEX_PATH` | `/data/search_index` | Tantivy search index |
+| `LORE_LOG_LEVEL` | `info` | Log level (trace/debug/info/warn/error) |
+| `LORE_CORS_ORIGINS` | `*` | Comma-separated allowed origins |
+| `LORE_MAX_UPLOAD_BYTES` | `10485760` | Max attachment upload size (10MB) |
 
 ## Reverse Proxy (nginx)
 
@@ -115,13 +115,13 @@ To sync with a GitHub/GitLab/Gitea remote:
 1. **Create a repo** on GitHub/GitLab/Gitea
 2. **Set env vars:**
    ```bash
-   FORGE_GIT_REMOTE_URL=https://github.com/yourorg/docs.git
-   FORGE_GIT_REMOTE_TOKEN=ghp_your_token
+   LORE_GIT_REMOTE_URL=https://github.com/yourorg/docs.git
+   LORE_GIT_REMOTE_TOKEN=ghp_your_token
    ```
 3. **Set up webhook** (optional, for auto-pull on push):
    - GitHub: Settings → Webhooks → Add webhook
    - URL: `https://docs.yourcompany.com/api/webhooks/git`
-   - Secret: any random string (set `FORGE_WEBHOOK_SECRET` to match)
+   - Secret: any random string (set `LORE_WEBHOOK_SECRET` to match)
    - Events: Push events
 
 ## Backup
@@ -133,7 +133,7 @@ Forge stores all data in two places:
 ```bash
 # Backup
 docker exec forge tar -czf /tmp/backup.tar.gz /data
-docker cp forge:/tmp/backup.tar.gz ./forge-backup-$(date +%Y%m%d).tar.gz
+docker cp lore:/tmp/backup.tar.gz ./forge-backup-$(date +%Y%m%d).tar.gz
 
 # Or just back up the volume
 docker run --rm -v forge-data:/data -v $(pwd):/backup alpine \
@@ -145,7 +145,7 @@ The git repo is its own backup — push to a remote and you have an off-site cop
 ## Upgrade
 
 ```bash
-docker pull ghcr.io/your-org/forge:latest
+docker pull ghcr.io/your-org/lore:latest
 docker compose down && docker compose up -d
 ```
 

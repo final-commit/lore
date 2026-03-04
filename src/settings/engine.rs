@@ -83,7 +83,7 @@ mod tests {
     async fn test_get_defaults() {
         let e = engine();
         let s = e.get().await.unwrap();
-        assert_eq!(s.name, "Forge");
+        assert_eq!(s.name, "Lore");
         assert!(s.allow_signups);
         assert!(s.sharing_enabled);
     }

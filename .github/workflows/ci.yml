@@ -38,7 +38,7 @@ jobs:
       - name: cargo test
         run: cargo test --all-features -- --test-threads=4
         env:
-          FORGE_JWT_SECRET: "ci-test-secret-32-chars-minimum!"
+          LORE_JWT_SECRET: "ci-test-secret-32-chars-minimum!"
 
       - name: cargo clippy
         run: cargo clippy -- -D warnings
@@ -53,14 +53,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/forge
-          path: forge-frontend
+          path: lore-frontend
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: forge-frontend/packages/web/pnpm-lock.yaml
+          cache-dependency-path: lore-frontend/packages/web/pnpm-lock.yaml
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -69,11 +69,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: forge-frontend/packages/web
+        working-directory: lore-frontend/packages/web
 
       - name: pnpm build
         run: pnpm build
-        working-directory: forge-frontend/packages/web
+        working-directory: lore-frontend/packages/web
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3334
 
@@ -92,6 +92,6 @@ jobs:
         with:
           context: .
           push: false
-          tags: forge:${{ github.sha }}
+          tags: lore:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -822,47 +822,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
-name = "forge"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "argon2",
- "axum 0.8.8",
- "axum-extra",
- "axum-test",
- "base64",
- "chrono",
- "figment",
- "git2",
- "hex",
- "hmac",
- "jsonwebtoken",
- "moka",
- "pulldown-cmark",
- "rand 0.9.2",
- "regex",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "serde_yaml",
- "sha2",
- "tantivy",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-test",
- "tower",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "urlencoding",
- "uuid",
- "yrs",
- "zip",
-]
-
-[[package]]
 name = "form_urlencoded"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1628,6 +1587,47 @@ name = "log"
 version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
+
+[[package]]
+name = "lore"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "argon2",
+ "axum 0.8.8",
+ "axum-extra",
+ "axum-test",
+ "base64",
+ "chrono",
+ "figment",
+ "git2",
+ "hex",
+ "hmac",
+ "jsonwebtoken",
+ "moka",
+ "pulldown-cmark",
+ "rand 0.9.2",
+ "regex",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "tantivy",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-test",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "urlencoding",
+ "uuid",
+ "yrs",
+ "zip",
+]
 
 [[package]]
 name = "lru"

@@ -257,11 +257,11 @@ mod tests {
     async fn test_upsert_and_search() {
         let engine = engine();
         engine
-            .upsert(make_doc("docs/intro.md", "Introduction", "Welcome to Forge documentation"))
+            .upsert(make_doc("docs/intro.md", "Introduction", "Welcome to Lore documentation"))
             .await
             .unwrap();
 
-        let results = engine.query("Forge", 10).await.unwrap();
+        let results = engine.query("Lore", 10).await.unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].path, "docs/intro.md");
     }

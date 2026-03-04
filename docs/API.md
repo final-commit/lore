@@ -1,4 +1,4 @@
-# Forge API Reference
+# Lore API Reference
 
 Base URL: `http://localhost:3000` (or your deployed URL)
 
@@ -514,7 +514,7 @@ Results cached for 1 hour.
 
 ## AI
 
-Requires `FORGE_AI_API_KEY` environment variable. Works with any OpenAI-compatible API.
+Requires `LORE_AI_API_KEY` environment variable. Works with any OpenAI-compatible API.
 
 `GET /api/ai/status` — Check if AI is configured (no auth)
 
@@ -526,12 +526,12 @@ Requires `FORGE_AI_API_KEY` environment variable. Works with any OpenAI-compatib
 
 `POST /api/ai/generate` — `{ "outline": "## Section\n- point 1\n- point 2" }` → `{ "content": "..." }`
 
-Returns `501 Not Implemented` if `FORGE_AI_API_KEY` is not set.
+Returns `501 Not Implemented` if `LORE_AI_API_KEY` is not set.
 
 **Config:**
-- `FORGE_AI_API_KEY` — OpenAI API key (or compatible)
-- `FORGE_AI_BASE_URL` — Default: `https://api.openai.com/v1`
-- `FORGE_AI_MODEL` — Default: `gpt-4o-mini`
+- `LORE_AI_API_KEY` — OpenAI API key (or compatible)
+- `LORE_AI_BASE_URL` — Default: `https://api.openai.com/v1`
+- `LORE_AI_MODEL` — Default: `gpt-4o-mini`
 
 ---
 

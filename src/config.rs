@@ -28,7 +28,7 @@ impl Default for Config {
             host: "0.0.0.0".to_string(),
             port: 3000,
             repo_path: "./repo".to_string(),
-            db_path: "./forge.db".to_string(),
+            db_path: "./lore.db".to_string(),
             search_index_path: "./search_index".to_string(),
             jwt_secret: "change-me-in-production-use-32-chars-min".to_string(),
             log_level: "info".to_string(),
@@ -48,8 +48,8 @@ impl Config {
     pub fn load() -> Result<Self, figment::Error> {
         Figment::new()
             .merge(Serialized::defaults(Config::default()))
-            .merge(Toml::file("forge.toml"))
-            .merge(Env::prefixed("FORGE_"))
+            .merge(Toml::file("lore.toml"))
+            .merge(Env::prefixed("LORE_"))
             .extract()
     }
 
@@ -58,8 +58,8 @@ impl Config {
     pub fn load_with(overrides: impl figment::Provider) -> Result<Self, figment::Error> {
         Figment::new()
             .merge(Serialized::defaults(Config::default()))
-            .merge(Toml::file("forge.toml"))
-            .merge(Env::prefixed("FORGE_"))
+            .merge(Toml::file("lore.toml"))
+            .merge(Env::prefixed("LORE_"))
             .merge(overrides)
             .extract()
     }
@@ -95,10 +95,10 @@ mod tests {
     #[test]
     fn test_config_env_override() {
         let _lock = ENV_LOCK.lock().unwrap();
-        // FORGE_PORT should override the default port.
-        unsafe { std::env::set_var("FORGE_PORT", "9090") };
+        // LORE_PORT should override the default port.
+        unsafe { std::env::set_var("LORE_PORT", "9090") };
         let cfg = Config::load().expect("config should load");
-        unsafe { std::env::remove_var("FORGE_PORT") };
+        unsafe { std::env::remove_var("LORE_PORT") };
         assert_eq!(cfg.port, 9090);
     }
 }

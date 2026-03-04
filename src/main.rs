@@ -7,43 +7,43 @@ use axum::http::{header, HeaderValue, Method};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-use forge::api;
-use forge::attachments::AttachmentEngine;
-use forge::auth::handler::AuthService;
-use forge::cache::PageCache;
-use forge::collections::CollectionEngine;
-use forge::comments::CommentEngine;
-use forge::config::Config;
-use forge::db;
-use forge::doc_meta::DocMetaEngine;
-use forge::events::EventEngine;
-use forge::git::{GitEngine, GitQueue};
-use forge::groups::GroupEngine;
-use forge::memberships::MembershipEngine;
-use forge::notifications::NotificationEngine;
-use forge::outbound_webhooks::OutboundWebhookEngine;
-use forge::pins::PinEngine;
-use forge::rate_limit::RateLimiter;
-use forge::reactions::ReactionEngine;
-use forge::realtime::new_rooms;
-use forge::relationships::RelationshipEngine;
-use forge::search::SearchEngine;
-use forge::shares::ShareEngine;
-use forge::stars::StarEngine;
-use forge::state::AppState;
-use forge::subscriptions::SubscriptionEngine;
-use forge::sync::SyncEngine;
-use forge::templates::TemplateEngine;
-use forge::views::ViewEngine;
-use forge::settings::SettingsEngine;
-use forge::preferences::PreferencesEngine;
-use forge::import::ImportEngine;
-use forge::ai::AiEngine;
-use forge::unfurl::UnfurlEngine;
-use forge::emojis::EmojiEngine;
-use forge::export_jobs::ExportJobEngine;
-use forge::oauth::OAuthEngine;
-use forge::cron;
+use lore::api;
+use lore::attachments::AttachmentEngine;
+use lore::auth::handler::AuthService;
+use lore::cache::PageCache;
+use lore::collections::CollectionEngine;
+use lore::comments::CommentEngine;
+use lore::config::Config;
+use lore::db;
+use lore::doc_meta::DocMetaEngine;
+use lore::events::EventEngine;
+use lore::git::{GitEngine, GitQueue};
+use lore::groups::GroupEngine;
+use lore::memberships::MembershipEngine;
+use lore::notifications::NotificationEngine;
+use lore::outbound_webhooks::OutboundWebhookEngine;
+use lore::pins::PinEngine;
+use lore::rate_limit::RateLimiter;
+use lore::reactions::ReactionEngine;
+use lore::realtime::new_rooms;
+use lore::relationships::RelationshipEngine;
+use lore::search::SearchEngine;
+use lore::shares::ShareEngine;
+use lore::stars::StarEngine;
+use lore::state::AppState;
+use lore::subscriptions::SubscriptionEngine;
+use lore::sync::SyncEngine;
+use lore::templates::TemplateEngine;
+use lore::views::ViewEngine;
+use lore::settings::SettingsEngine;
+use lore::preferences::PreferencesEngine;
+use lore::import::ImportEngine;
+use lore::ai::AiEngine;
+use lore::unfurl::UnfurlEngine;
+use lore::emojis::EmojiEngine;
+use lore::export_jobs::ExportJobEngine;
+use lore::oauth::OAuthEngine;
+use lore::cron;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -52,12 +52,12 @@ async fn main() -> anyhow::Result<()> {
     // ── Logging ────────────────────────────────────────────────────────────
     tracing_subscriber::registry()
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            EnvFilter::new(format!("forge={},tower_http=debug", config.log_level))
+            EnvFilter::new(format!("lore={},tower_http=debug", config.log_level))
         }))
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    tracing::info!(port = config.port, "starting Forge server");
+    tracing::info!(port = config.port, "starting Lore server");
 
     // ── Database ───────────────────────────────────────────────────────────
     let db = db::open(&config.db_path)?;
@@ -124,9 +124,9 @@ async fn main() -> anyhow::Result<()> {
 
     // ── Overnight build engines ────────────────────────────────────────────
     let ai = AiEngine::new(
-        std::env::var("FORGE_AI_API_KEY").ok(),
-        std::env::var("FORGE_AI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".into()),
-        std::env::var("FORGE_AI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".into()),
+        std::env::var("LORE_AI_API_KEY").ok(),
+        std::env::var("LORE_AI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".into()),
+        std::env::var("LORE_AI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".into()),
     );
     let unfurl = UnfurlEngine::new();
     let emojis = EmojiEngine::new(db.clone(), repo_path.join("_emojis"));

@@ -5,7 +5,7 @@ use crate::error::AppError;
 use crate::state::AppState;
 
 fn not_configured() -> AppError {
-    AppError::Internal("AI not configured — set FORGE_AI_API_KEY".into())
+    AppError::Internal("AI not configured — set LORE_AI_API_KEY".into())
 }
 
 #[derive(Deserialize)]
@@ -47,6 +47,6 @@ pub async fn ai_status(State(state): State<AppState>) -> (StatusCode, Json<serde
     if state.ai.is_configured() {
         (StatusCode::OK, Json(serde_json::json!({ "configured": true })))
     } else {
-        (StatusCode::NOT_IMPLEMENTED, Json(serde_json::json!({ "configured": false, "message": "Set FORGE_AI_API_KEY to enable AI features" })))
+        (StatusCode::NOT_IMPLEMENTED, Json(serde_json::json!({ "configured": false, "message": "Set LORE_AI_API_KEY to enable AI features" })))
     }
 }

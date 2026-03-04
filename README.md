@@ -1,4 +1,4 @@
-# Forge
+# Lore
 
 **A self-hosted team wiki that runs on a Raspberry Pi.**
 
@@ -61,7 +61,7 @@ Forge is self-hostable, genuinely lightweight, and built for teams. It runs comf
 git clone https://github.com/yourorg/forge
 cd forge
 cp .env.example .env
-# Edit .env — at minimum set FORGE_JWT_SECRET
+# Edit .env — at minimum set LORE_JWT_SECRET
 docker compose up -d
 ```
 
@@ -84,20 +84,20 @@ All config via environment variables. Copy `.env.example` to `.env`:
 
 ```env
 # Required
-FORGE_JWT_SECRET=generate-with-openssl-rand-hex-32
+LORE_JWT_SECRET=generate-with-openssl-rand-hex-32
 
 # Optional: AI (any OpenAI-compatible endpoint)
-FORGE_AI_API_KEY=sk-...
-FORGE_AI_BASE_URL=https://api.openai.com/v1
-FORGE_AI_MODEL=gpt-4o-mini
+LORE_AI_API_KEY=sk-...
+LORE_AI_BASE_URL=https://api.openai.com/v1
+LORE_AI_MODEL=gpt-4o-mini
 
 # Optional: Google OAuth
-FORGE_OAUTH_GOOGLE_CLIENT_ID=...
-FORGE_OAUTH_GOOGLE_CLIENT_SECRET=...
+LORE_OAUTH_GOOGLE_CLIENT_ID=...
+LORE_OAUTH_GOOGLE_CLIENT_SECRET=...
 
 # Optional: Git sync remote
-FORGE_GIT_REMOTE_URL=https://github.com/yourorg/docs.git
-FORGE_GIT_REMOTE_TOKEN=ghp_...
+LORE_GIT_REMOTE_URL=https://github.com/yourorg/docs.git
+LORE_GIT_REMOTE_TOKEN=ghp_...
 ```
 
 ---
@@ -153,7 +153,7 @@ sudo mv forge /usr/local/bin/
 # Create systemd service
 sudo tee /etc/systemd/system/forge.service << EOF
 [Unit]
-Description=Forge wiki
+Description=Lore wiki
 After=network.target
 
 [Service]

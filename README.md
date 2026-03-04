@@ -131,7 +131,7 @@ Documents are stored as Markdown files in a Git repository — readable, editabl
 # Prerequisites: Rust 1.75+, Node.js 20+, pnpm
 
 # Backend
-cd forge-rust
+cd lore
 cargo test        # 257 tests
 cargo run         # starts on :3334
 

@@ -72,7 +72,7 @@ React (Next.js 16) frontend from the existing `packages/web/`. Talks to Rust bac
 ## 4. Module Structure
 
 ```
-forge-rust/
+lore/
 ├── Cargo.toml
 ├── src/
 │   ├── main.rs              # Entry point, server startup

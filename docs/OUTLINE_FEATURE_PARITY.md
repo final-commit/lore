@@ -1,7 +1,7 @@
 # Outline Feature Parity — Gap Analysis & Build Plan
 
 **Date:** 2026-03-02
-**Source:** Outline repo (cloned at `~/forge-platform/outline-ref/`)
+**Source:** Outline repo (cloned at `~/lore-platform/outline-ref/`)
 **Method:** Full code audit of Outline's 35 API route modules, 34 models, 35 stores, and all UI scenes
 
 ---

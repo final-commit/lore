@@ -132,6 +132,7 @@ Documents are stored as Markdown files in a Git repository — readable, editabl
 
 # Backend
 cd lore
+cd server
 cargo test        # 257 tests
 cargo run         # starts on :3334
 

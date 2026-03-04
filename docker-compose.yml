@@ -2,21 +2,21 @@ version: '3.9'
 
 # Lore — self-hosted documentation platform
 # Usage: docker compose up -d
-# Docs: https://github.com/yourorg/forge
+# Docs: https://github.com/final-commit/lore
 
 services:
-  backend:
+  server:
     build:
-      context: .
+      context: ./server
       dockerfile: Dockerfile
-    container_name: lore-backend
+    container_name: lore-server
     restart: unless-stopped
     ports:
       - "3334:3334"
     environment:
       LORE_PORT: "3334"
       LORE_JWT_SECRET: "${LORE_JWT_SECRET:?Set LORE_JWT_SECRET in .env}"
-      LORE_DB_PATH: "/data/forge.db"
+      LORE_DB_PATH: "/data/lore.db"
       LORE_REPO_PATH: "/data/repo"
       LORE_SEARCH_INDEX_PATH: "/data/search_index"
       LORE_ATTACHMENT_PATH: "/data/attachments"
@@ -37,21 +37,21 @@ services:
       retries: 3
       start_period: 10s
 
-  frontend:
+  app:
     build:
-      context: ../forge/packages/web
+      context: ./app
       dockerfile: Dockerfile
       args:
-        LORE_BACKEND_URL: "http://lore-backend:3334"
-    container_name: lore-frontend
+        LORE_BACKEND_URL: "http://lore-server:3334"
+    container_name: lore-app
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      LORE_BACKEND_URL: "http://lore-backend:3334"
+      LORE_BACKEND_URL: "http://lore-server:3334"
       NODE_ENV: "production"
     depends_on:
-      backend:
+      server:
         condition: service_healthy
 
 volumes:

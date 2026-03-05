@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils'
 
 const lowlight = createLowlight(common)
 
-interface ForgeEditorProps {
+interface LoreEditorProps {
   content: string // Markdown content
   onSave: (markdown: string) => Promise<void>
   readOnly?: boolean
@@ -32,7 +32,7 @@ interface ForgeEditorProps {
   onExport?: () => void
 }
 
-export function ForgeEditor({
+export function LoreEditor({
   content,
   onSave,
   readOnly = false,
@@ -40,7 +40,7 @@ export function ForgeEditor({
   docPath,
   onShare,
   onExport,
-}: ForgeEditorProps) {
+}: LoreEditorProps) {
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [showAI, setShowAI] = useState(false)

@@ -4,8 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, FileText, X } from 'lucide-react'
 import { api } from '@/lib/api'
+import type { SearchResult } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import type { SearchResult } from '@forge/shared'
 
 export function SearchDialog() {
   const [open, setOpen] = useState(false)

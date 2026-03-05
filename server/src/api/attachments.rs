@@ -69,10 +69,7 @@ pub async fn get_attachment(
 
     let content_len = bytes.len().to_string();
     // Sanitize filename to prevent Content-Disposition header injection
-    let safe_filename = meta.filename
-        .replace('"', "")
-        .replace('\n', "")
-        .replace('\r', "");
+    let safe_filename = meta.filename.replace(['"', '\n', '\r'], "");
     let disposition = format!("inline; filename=\"{safe_filename}\"");
 
     Response::builder()

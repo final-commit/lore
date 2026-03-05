@@ -35,13 +35,14 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('server/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
+      - name: Generate ephemeral JWT secret
+        run: echo "LORE_JWT_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
+
       - name: cargo check
         run: cargo check --all-features
 
       - name: cargo test
         run: cargo test --all-features -- --test-threads=4
-        env:
-          LORE_JWT_SECRET: "ci-test-secret-32-chars-minimum!!"
 
       - name: cargo clippy
         run: cargo clippy -- -D warnings

@@ -1,7 +1,10 @@
 use chrono::Utc;
+use moka::future::Cache;
+use rand::Rng;
 use reqwest::Client;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::time::Duration;
 use crate::db::{with_conn, DbConn};
 use crate::error::AppError;
@@ -30,18 +33,52 @@ struct TokenResponse {
     access_token: String,
 }
 
+/// Short-lived nonce cache for OAuth CSRF state tokens.
+/// Each entry expires after 10 minutes.
+type StateCache = Cache<String, ()>;
+
 #[derive(Clone)]
 pub struct OAuthEngine {
     db: DbConn,
     client: Client,
+    /// CSRF state tokens: key = provider:nonce, value = ()
+    state_cache: Arc<StateCache>,
 }
 
 impl OAuthEngine {
     pub fn new(db: DbConn) -> Self {
+        let state_cache = Cache::builder()
+            .max_capacity(1_000)
+            .time_to_live(Duration::from_secs(600)) // 10 minutes
+            .build();
         OAuthEngine {
             db,
             client: Client::builder().timeout(Duration::from_secs(10)).build().unwrap_or_default(),
+            state_cache: Arc::new(state_cache),
         }
+    }
+
+    /// Generate a cryptographically random state token and store it in the cache.
+    /// Returns the token to embed in the OAuth redirect URL.
+    pub async fn generate_state(&self, provider: &str) -> String {
+        let nonce: String = rand::rng()
+            .sample_iter(rand::distr::Alphanumeric)
+            .take(32)
+            .map(char::from)
+            .collect();
+        let key = format!("{provider}:{nonce}");
+        self.state_cache.insert(key, ()).await;
+        nonce
+    }
+
+    /// Verify and consume a state token. Returns `true` if valid, `false` if invalid/expired.
+    pub async fn verify_and_consume_state(&self, provider: &str, state: &str) -> bool {
+        let key = format!("{provider}:{state}");
+        let valid = self.state_cache.contains_key(&key);
+        if valid {
+            self.state_cache.remove(&key).await;
+        }
+        valid
     }
 
     pub async fn list_enabled_providers(&self) -> Result<Vec<OAuthProvider>, AppError> {
@@ -194,5 +231,27 @@ mod tests {
         e.configure_provider("google", "cid", "csec", false).await.unwrap();
         let providers = e.list_enabled_providers().await.unwrap();
         assert!(providers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_oauth_state_generate_and_verify() {
+        let e = engine();
+        let state = e.generate_state("google").await;
+        assert_eq!(state.len(), 32);
+        assert!(e.verify_and_consume_state("google", &state).await, "state should be valid");
+        assert!(!e.verify_and_consume_state("google", &state).await, "state should be consumed");
+    }
+
+    #[tokio::test]
+    async fn test_oauth_state_wrong_provider() {
+        let e = engine();
+        let state = e.generate_state("google").await;
+        assert!(!e.verify_and_consume_state("github", &state).await, "wrong provider should fail");
+    }
+
+    #[tokio::test]
+    async fn test_oauth_state_invalid_nonce() {
+        let e = engine();
+        assert!(!e.verify_and_consume_state("google", "not-a-real-nonce").await);
     }
 }

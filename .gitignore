@@ -1,1 +1,38 @@
+# Rust build artifacts
 /target
+server/target
+
+# Environment / secrets
+.env
+*.env.local
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+app/.next/
+app/out/
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Search index (runtime-generated)
+search_index/
+
+# Repo data (runtime-generated)
+repo/
+
+# Upload / export dirs
+_uploads/
+_emojis/
+_exports/

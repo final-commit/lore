@@ -7,7 +7,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [0.1.0] - 2026-03-05
 
 ### Added
 - Full Outline feature parity (97 API routes, 257 tests)

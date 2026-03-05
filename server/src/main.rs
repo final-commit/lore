@@ -49,6 +49,18 @@ use lore::cron;
 async fn main() -> anyhow::Result<()> {
     let config = Config::load().expect("failed to load config");
 
+    // ── Safety: reject default/weak JWT secret in production ───────────────
+    const DEFAULT_SECRET: &str = "change-me-in-production-use-32-chars-min";
+    if config.jwt_secret == DEFAULT_SECRET {
+        eprintln!("FATAL: LORE_JWT_SECRET is set to the default placeholder value.");
+        eprintln!("       Generate a secure secret and set it via LORE_JWT_SECRET or lore.toml.");
+        std::process::exit(1);
+    }
+    if config.jwt_secret.len() < 32 {
+        eprintln!("FATAL: LORE_JWT_SECRET must be at least 32 characters long.");
+        std::process::exit(1);
+    }
+
     // ── Logging ────────────────────────────────────────────────────────────
     tracing_subscriber::registry()
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {

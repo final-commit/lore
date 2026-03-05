@@ -68,13 +68,18 @@ pub async fn get_attachment(
     let (meta, bytes) = state.attachments.read_bytes(&id).await?;
 
     let content_len = bytes.len().to_string();
-    let disposition = format!("inline; filename=\"{}\"", meta.filename);
+    // Sanitize filename to prevent Content-Disposition header injection
+    let safe_filename = meta.filename
+        .replace('"', "")
+        .replace('\n', "")
+        .replace('\r', "");
+    let disposition = format!("inline; filename=\"{safe_filename}\"");
 
-    Ok(Response::builder()
+    Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, meta.content_type)
         .header(header::CONTENT_DISPOSITION, disposition)
         .header(header::CONTENT_LENGTH, content_len)
         .body(Body::from(bytes))
-        .unwrap())
+        .map_err(|e| AppError::Internal(format!("response builder: {e}")))
 }

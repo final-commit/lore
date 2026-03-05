@@ -2,7 +2,7 @@
 
 **A self-hosted team wiki that runs on a Raspberry Pi.**
 
-Forge is a full-featured documentation platform — real-time collaborative editing, inline comments, AI writing assistance, and Git-backed history — built in Rust. It uses ~150MB RAM under load. The same workload on Outline (Node.js) uses 1.5GB.
+Lore is a full-featured documentation platform — real-time collaborative editing, inline comments, AI writing assistance, and Git-backed history — built in Rust. It uses ~150MB RAM under load. The same workload on Outline (Node.js) uses 1.5GB.
 
 > ⚠️ Early release. Production use at your own risk. Feedback welcome.
 
@@ -15,13 +15,13 @@ Most team wikis are either:
 - **Self-hostable but heavy** (Outline, BookStack) — needs 1-4GB RAM, a VPS that costs £10-20/month minimum
 - **Personal** (Obsidian, Logseq) — no real multi-user or permissions model
 
-Forge is self-hostable, genuinely lightweight, and built for teams. It runs comfortably on a Raspberry Pi 4 (4GB) or the cheapest VPS tier (£3-5/month).
+Lore is self-hostable, genuinely lightweight, and built for teams. It runs comfortably on a Raspberry Pi 4 (4GB) or the cheapest VPS tier (£3-5/month).
 
 ---
 
 ## Features
 
-| | Forge | Outline | Notion |
+| | Lore | Outline | Notion |
 |---|---|---|---|
 | Self-hosted | ✅ | ✅ | ❌ |
 | RAM (100 users) | ~150MB | ~1.5GB | — |
@@ -58,8 +58,8 @@ Forge is self-hostable, genuinely lightweight, and built for teams. It runs comf
 **Docker (recommended):**
 
 ```bash
-git clone https://github.com/yourorg/forge
-cd forge
+git clone https://github.com/final-commit/lore
+cd lore
 cp .env.example .env
 # Edit .env — at minimum set LORE_JWT_SECRET
 docker compose up -d
@@ -71,9 +71,9 @@ Open [http://localhost:3000](http://localhost:3000). Register the first account 
 
 ```bash
 # Download the latest release binary for your platform
-curl -L https://github.com/yourorg/forge/releases/latest/download/forge-linux-aarch64.tar.gz | tar xz
+curl -L https://github.com/final-commit/lore/releases/latest/download/lore-linux-aarch64.tar.gz | tar xz
 cp .env.example .env && $EDITOR .env
-./forge
+./lore
 ```
 
 ---
@@ -106,7 +106,7 @@ LORE_GIT_REMOTE_TOKEN=ghp_...
 
 ```
 ┌─────────────────────────────────────────┐
-│              Forge binary               │
+│              Lore binary                │
 │                                         │
 │  ┌──────────┐  ┌────────┐  ┌────────┐  │
 │  │  Axum    │  │ SQLite │  │  Git   │  │
@@ -121,7 +121,7 @@ LORE_GIT_REMOTE_TOKEN=ghp_...
 
 Single binary. Single SQLite file. Single Git repo. No external services required.
 
-Documents are stored as Markdown files in a Git repository — readable, editable, and portable without Forge installed. Metadata (comments, stars, shares, etc.) lives in SQLite.
+Documents are stored as Markdown files in a Git repository — readable, editable, and portable without Lore installed. Metadata (comments, stars, shares, etc.) lives in SQLite.
 
 ---
 
@@ -131,13 +131,12 @@ Documents are stored as Markdown files in a Git repository — readable, editabl
 # Prerequisites: Rust 1.75+, Node.js 20+, pnpm
 
 # Backend
-cd lore
-cd server
+cd lore/server
 cargo test        # 257 tests
 cargo run         # starts on :3334
 
 # Frontend
-cd forge/packages/web
+cd lore/app
 pnpm install
 pnpm dev          # starts on :3000, proxies API to :3334
 ```
@@ -148,26 +147,26 @@ pnpm dev          # starts on :3000, proxies API to :3334
 
 ```bash
 # On your Pi (aarch64):
-curl -L https://github.com/yourorg/forge/releases/latest/download/forge-linux-aarch64.tar.gz | tar xz
-sudo mv forge /usr/local/bin/
+curl -L https://github.com/final-commit/lore/releases/latest/download/lore-linux-aarch64.tar.gz | tar xz
+sudo mv lore /usr/local/bin/
 
 # Create systemd service
-sudo tee /etc/systemd/system/forge.service << EOF
+sudo tee /etc/systemd/system/lore.service << EOF
 [Unit]
 Description=Lore wiki
 After=network.target
 
 [Service]
-EnvironmentFile=/etc/forge.env
-ExecStart=/usr/local/bin/forge
+EnvironmentFile=/etc/lore.env
+ExecStart=/usr/local/bin/lore
 Restart=on-failure
-User=forge
+User=lore
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-sudo systemctl enable --now forge
+sudo systemctl enable --now lore
 ```
 
 Memory usage on idle: ~80MB. Under load (10 concurrent editors): ~150MB.
@@ -180,7 +179,7 @@ Memory usage on idle: ~80MB. Under load (10 concurrent editors): ~150MB.
 - [ ] Postgres adapter (for larger teams)
 - [ ] Mobile-friendly editor improvements
 - [ ] SAML / enterprise SSO
-- [ ] Hosted cloud version (if there's demand — [register interest](mailto:forge@daraoui.com))
+- [ ] Hosted cloud version (if there's demand — [register interest](mailto:zak@daraoui.com))
 
 ---
 

@@ -29,7 +29,7 @@ use yrs::{
 };
 
 use crate::auth::middleware::resolve_token;
-use crate::error::AppError;
+use crate::error::{validate_path, AppError};
 use crate::state::AppState;
 
 // ── Room ──────────────────────────────────────────────────────────────────────
@@ -85,6 +85,11 @@ pub async fn yjs_ws_handler(
             return AppError::Unauthorized("missing token query parameter".into()).into_response()
         }
     };
+
+    // Validate path to prevent path-traversal via WebSocket
+    if let Err(e) = validate_path(&doc_path) {
+        return e.into_response();
+    }
 
     let jwt_secret = state.config.jwt_secret.clone();
     let db = state.db.clone();

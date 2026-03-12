@@ -1,3 +1,4 @@
+pub mod backend;
 pub mod schema;
 
 use rusqlite::Connection;

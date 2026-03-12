@@ -54,6 +54,25 @@ services:
       server:
         condition: service_healthy
 
+  # ── Phase 2: Agent Docker executor ──────────────────────────────────────────
+  # Activated in Phase 2 — required for agent execute:code and shell:run capabilities.
+  # Uncomment this service when the lore-docker-executor image is available.
+  #
+  # lore-docker-executor:
+  #   image: ghcr.io/final-commit/lore-docker-executor:latest
+  #   container_name: lore-docker-executor
+  #   restart: unless-stopped
+  #   environment:
+  #     EXECUTOR_LORE_URL: "http://lore-server:3334"
+  #     EXECUTOR_JWT_SECRET: "${LORE_JWT_SECRET:?Set LORE_JWT_SECRET in .env}"
+  #     EXECUTOR_MAX_CONCURRENT: "4"
+  #     EXECUTOR_TIMEOUT_SECS: "30"
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   depends_on:
+  #     server:
+  #       condition: service_healthy
+
 volumes:
   lore_data:
     driver: local

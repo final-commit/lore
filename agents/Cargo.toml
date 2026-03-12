@@ -1,0 +1,20 @@
+[package]
+name = "lore-agent-sdk"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Agent SDK for the Lore platform — Phase 1 scaffold"
+publish = false
+
+# No code yet. The SDK will be implemented in Phase 1 (weeks 3–10).
+# See agents/README.md for the planned architecture.
+
+[lib]
+name = "lore_agent_sdk"
+path = "src/lib.rs"
+
+[dependencies]
+# Phase 1 will add: wasmtime, wit-bindgen, serde, tokio
+
+[dev-dependencies]

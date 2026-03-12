@@ -123,6 +123,22 @@ Single binary. Single SQLite file. Single Git repo. No external services require
 
 Documents are stored as Markdown files in a Git repository — readable, editable, and portable without Lore installed. Metadata (comments, stars, shares, etc.) lives in SQLite.
 
+### Repository layout
+
+```
+lore/
+├── server/     # Rust backend (Axum 0.8, SQLite, git2, Tantivy)
+├── app/        # Next.js 16 + React 19 + Tiptap v3 + Tailwind 4 frontend
+├── agents/     # Agent SDK (Rust) + built-in agents, compiled to WASM — Phase 1
+├── desktop/    # Tauri desktop app (macOS / Linux / Windows) — Phase 3
+├── docs/       # Architecture specs and decision records
+└── DECISIONS.md
+```
+
+> **Agent execution** requires Docker for the `execute:code` and `shell:run`
+> capabilities (Phase 2). The `lore-docker-executor` service is defined in
+> `docker-compose.yml` and is commented out until Phase 2.
+
 ---
 
 ## Development
@@ -185,7 +201,11 @@ Memory usage on idle: ~80MB. Under load (10 concurrent editors): ~150MB.
 
 ## Licence
 
-[Business Source License 1.1](LICENSE) — free to self-host, commercial hosting requires a licence. Converts to Apache 2.0 on 2029-01-01.
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
+
+Dual-licensed under [MIT](LICENSE-MIT) OR [Apache 2.0](LICENSE-APACHE) — your choice.
+This is the standard Rust ecosystem licence (used by Axum, Tokio, and rust-lang itself).
+Apache 2.0 includes a patent grant for enterprise use; MIT maximises community adoption.
 
 ---
 

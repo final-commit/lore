@@ -6,6 +6,10 @@ rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+# Agent runtime
+wasmtime = { version = "42", features = ["cranelift", "component-model"] }
+toml = "1"
+
 # Web framework
 axum = { version = "0.8", features = ["ws", "macros", "multipart"] }
 axum-extra = { version = "0.10", features = ["cookie", "typed-header"] }
@@ -71,3 +75,4 @@ urlencoding = "2"
 tempfile = "3"
 tokio-test = "0.4"
 axum-test = "16"
+wat = "1"

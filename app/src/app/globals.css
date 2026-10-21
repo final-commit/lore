@@ -8,3 +8,27 @@
 
 /* Dark mode is default. Light mode activates when .dark is removed from <html> */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Heading anchor links */
+.heading-anchor {
+  position: absolute;
+  left: -1.5em;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-zinc-600);
+  text-decoration: none;
+  font-weight: 400;
+  font-size: 0.85em;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+h1:hover > .heading-anchor,
+h2:hover > .heading-anchor,
+h3:hover > .heading-anchor {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  color: var(--color-zinc-400);
+}

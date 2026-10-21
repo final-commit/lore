@@ -5,7 +5,7 @@ WORKDIR /app
 RUN npm install -g pnpm
 
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # ── Stage 2: builder ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
@@ -16,8 +16,8 @@ RUN npm install -g pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ARG FORGE_BACKEND_URL=http://forge-backend:3334
-ENV FORGE_BACKEND_URL=$FORGE_BACKEND_URL
+ARG LORE_BACKEND_URL=http://lore-server:3334
+ENV LORE_BACKEND_URL=$LORE_BACKEND_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm build

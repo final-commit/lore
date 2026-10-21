@@ -3,7 +3,11 @@
  * Uses REST endpoints with Bearer token auth.
  */
 
-const API_BASE = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000')
+// In the browser, use relative URLs so Next.js proxies to the backend.
+// On the server, use the configured backend URL directly.
+const API_BASE = typeof window !== 'undefined'
+  ? (typeof location !== 'undefined' ? location.origin : '')
+  : (process.env.LORE_BACKEND_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000')
 
 function getAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -15,7 +19,7 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(path, API_BASE || 'http://localhost:3000')
+  const url = new URL(path, API_BASE)
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
       if (v != null) url.searchParams.set(k, v)
@@ -30,7 +34,7 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE || 'http://localhost:3000'}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: body ? JSON.stringify(body) : undefined,
@@ -43,7 +47,7 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 }
 
 async function put<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE || 'http://localhost:3000'}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
@@ -56,7 +60,7 @@ async function put<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function del(path: string): Promise<void> {
-  const res = await fetch(`${API_BASE || 'http://localhost:3000'}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   })
@@ -67,7 +71,7 @@ async function del(path: string): Promise<void> {
 }
 
 async function download(path: string, params?: Record<string, string>): Promise<Blob> {
-  const url = new URL(path, API_BASE || 'http://localhost:3000')
+  const url = new URL(path, API_BASE)
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
       if (v != null) url.searchParams.set(k, v)
@@ -456,12 +460,13 @@ export const api = {
     unreadCount: () => get<{ count: number }>('/api/notifications/unread-count'),
   },
   share: {
-    get: (path: string) => get<ShareSettings>('/api/share', { path }),
+    get: (path: string) => get<ShareSettings>('/api/shares', { doc_path: path }),
     create: (path: string, include_children: boolean) =>
-      post<ShareSettings>('/api/share', { path, include_children }),
+      post<ShareSettings>('/api/shares', { doc_path: path, include_child_docs: include_children }),
     update: (path: string, data: Partial<{ enabled: boolean; include_children: boolean }>) =>
-      put<ShareSettings>('/api/share', { path, ...data }),
-    getPublic: (url_id: string) => get<SharedDoc>(`/api/shared/${url_id}`),
+      put<ShareSettings>('/api/shares', { doc_path: path, ...data }),
+    getPublic: (url_id: string) =>
+      get<{ content: SharedDoc; share: unknown }>(`/api/shares/view/${url_id}`).then((r) => r.content),
   },
   preferences: {
     get: () => get<Preferences>('/api/preferences'),

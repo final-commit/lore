@@ -1,15 +1,23 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { Sidebar } from '@/components/sidebar/sidebar'
 import { MobileSidebar } from '@/components/sidebar/mobile-sidebar'
 import { DocViewer } from '@/components/doc-viewer'
-import { LoreEditor } from '@/components/editor/forge-editor'
+import { ForgeEditor as LoreEditor } from '@/components/editor/forge-editor'
 import { CommentPanel } from '@/components/comments/comment-panel'
 import { HistoryPanel } from '@/components/history/history-panel'
+import { TableOfContents } from '@/components/toc'
 import { api } from '@/lib/api'
 import type { DocResponse } from '@/lib/api'
+
+function countHeadings(content: string): number {
+  const regex = /^#{1,3}\s+.+$/gm
+  let count = 0
+  while (regex.exec(content) !== null) count++
+  return count
+}
 
 export default function DocsPage() {
   const params = useParams()
@@ -22,6 +30,10 @@ export default function DocsPage() {
   const [editing, setEditing] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+
+  const showToc = useMemo(() => {
+    return doc && !editing && countHeadings(doc.content) >= 3
+  }, [doc, editing])
 
   useEffect(() => {
     setLoading(true)
@@ -65,12 +77,24 @@ export default function DocsPage() {
                   className="h-full"
                 />
               ) : (
-                <DocViewer
-                  doc={doc}
-                  onEdit={() => setEditing(true)}
-                  onToggleComments={() => { setCommentsOpen(!commentsOpen); setHistoryOpen(false) }}
-                  onToggleHistory={() => { setHistoryOpen(!historyOpen); setCommentsOpen(false) }}
-                />
+                <div className="flex justify-center">
+                  <div className="flex-1 min-w-0">
+                    <DocViewer
+                      doc={doc}
+                      onEdit={() => setEditing(true)}
+                      onToggleComments={() => { setCommentsOpen(!commentsOpen); setHistoryOpen(false) }}
+                      onToggleHistory={() => { setHistoryOpen(!historyOpen); setCommentsOpen(false) }}
+                    />
+                  </div>
+
+                  {showToc && (
+                    <div className="hidden xl:block w-56 shrink-0 pr-6">
+                      <div className="sticky top-8 pt-12">
+                        <TableOfContents content={doc.content} />
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
